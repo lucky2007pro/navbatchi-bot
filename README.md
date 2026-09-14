@@ -82,3 +82,4 @@ DEFAULT_WORK_DAYS=workdays_sat
 # navbatchi-bot
 # navbatchi-bot
 # navbatchi-bot
+# navbatchi-bot
