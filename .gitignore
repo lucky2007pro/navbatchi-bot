@@ -1,0 +1,21 @@
+# Environment variables (Bot tokenlari va sirlar)
+.env
+
+# Database (Ma'lumotlar bazasi)
+*.db
+*.sqlite3
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
