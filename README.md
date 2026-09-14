@@ -80,3 +80,4 @@ DEFAULT_WORK_DAYS=workdays_sat
 | `/tozalash` | Faqat Admin | Navbatchilar yoki vazifalar ro'yxatini tozalash |
 | `/help` | Barcha | Qo'llanma |
 # navbatchi-bot
+# navbatchi-bot
