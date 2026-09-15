@@ -228,9 +228,15 @@ function renderMembers() {
     if (appState.isAdmin) {
       actionsHtml = `
         <div class="item-actions">
-          <button class="btn btn-icon" onclick="moveMember(${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Yuqoriga">▲</button>
-          <button class="btn btn-icon" onclick="moveMember(${idx}, 1)" ${idx === appState.members.length - 1 ? "disabled" : ""} title="Pastga">▼</button>
-          <button class="btn btn-icon btn-delete" onclick="deleteMember(${idx})" title="O'chirish">🗑️</button>
+          <button class="btn btn-icon" onclick="moveMember(${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Yuqoriga">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+          </button>
+          <button class="btn btn-icon" onclick="moveMember(${idx}, 1)" ${idx === appState.members.length - 1 ? "disabled" : ""} title="Pastga">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <button class="btn btn-icon btn-delete" onclick="deleteMember(${idx})" title="O'chirish">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
         </div>
       `;
     }
@@ -241,7 +247,7 @@ function renderMembers() {
         <div class="item-info">
           <div class="item-title">
             ${escapeHtml(m.name)}
-            ${isCurrent ? '<span class="item-current-pill">🎯 Bugun</span>' : ""}
+            ${isCurrent ? '<span class="item-current-pill">BUGUN</span>' : ""}
           </div>
           <div class="item-subtitle">${m.username ? `@${escapeHtml(m.username)}` : "username yo'q"}</div>
         </div>
@@ -271,7 +277,9 @@ function renderTasks() {
     if (appState.isAdmin) {
       actionsHtml = `
         <div class="item-actions">
-          <button class="btn btn-icon btn-delete" onclick="deleteTask(${idx})" title="O'chirish">🗑️</button>
+          <button class="btn btn-icon btn-delete" onclick="deleteTask(${idx})" title="O'chirish">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
         </div>
       `;
     }
@@ -299,14 +307,13 @@ function renderRatings() {
     return;
   }
 
-  const medals = ["🥇", "🥈", "🥉"];
   container.innerHTML = ratings.map((r, idx) => {
-    const badge = idx < 3 ? medals[idx] : `#${idx + 1}`;
     const topClass = idx === 0 ? "top-1" : "";
+    const rankNum = idx + 1;
     return `
       <div class="rating-item ${topClass}">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 1.4rem;">${badge}</span>
+          <div class="item-order">#${rankNum}</div>
           <div>
             <div style="font-weight: 700; font-size: 0.98rem; color: #fff;">${escapeHtml(r.member_name)}</div>
             <div style="font-size: 0.8rem; color: var(--text-secondary);">
@@ -315,8 +322,14 @@ function renderRatings() {
           </div>
         </div>
         <div style="display: flex; gap: 8px; font-weight: 700;">
-          <span class="badge-like">👍 ${r.total_likes}</span>
-          <span class="badge-dislike">👎 ${r.total_dislikes}</span>
+          <span class="badge-like">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h3"/><path d="M18 10h-5.83l.87-4.12a2 2 0 0 0-.25-1.5 2.1 2.1 0 0 0-1.79-1.26L11 3l-4 7"/></svg>
+            ${r.total_likes}
+          </span>
+          <span class="badge-dislike">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3"/><path d="M6 14h5.83l-.87 4.12a2 2 0 0 0 .25 1.5 2.1 2.1 0 0 0 1.79 1.26L13 21l4-7"/></svg>
+            ${r.total_dislikes}
+          </span>
         </div>
       </div>
     `;
@@ -508,12 +521,18 @@ function renderShopping() {
     const el = document.createElement("div");
     el.className = `shopping-item ${item.is_bought ? "bought" : ""}`;
 
+    const checkIcon = item.is_bought 
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
+      : "";
+
     el.innerHTML = `
       <div class="shopping-left" onclick="toggleShopping(${item.id})">
-        <div class="shopping-check">${item.is_bought ? "✓" : ""}</div>
+        <div class="shopping-check">${checkIcon}</div>
         <div class="shopping-title">${escapeHtml(item.title)}</div>
       </div>
-      <button class="btn btn-icon btn-delete" onclick="deleteShopping(${item.id})" title="O'chirish">🗑️</button>
+      <button class="btn btn-icon btn-delete" onclick="deleteShopping(${item.id})" title="O'chirish">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
     `;
     listEl.appendChild(el);
   });

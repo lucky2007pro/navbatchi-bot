@@ -220,17 +220,16 @@ body {
   border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
-/* ==================== SEGMENTED PILL TAB NAVIGATION ====================
-   Matches the day-picker bar from the reference image:
-   Rounded individual cards with icon on top, text below.
-   Active button has glowing vibrant background!
+/* ==================== CAPSULE PILL TAB NAVIGATION ====================
+   Exact match to the reference image:
+   Rounded capsule pills with monochrome vector outline icon on left, uppercase text on right.
    ====================================================================== */
 .tabs-nav {
   display: flex;
   background: transparent;
-  padding: 2px 0 6px 0;
+  padding: 4px 2px 12px 2px;
   margin-bottom: 20px;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -241,25 +240,39 @@ body {
 }
 
 .tab-btn {
-  flex: 1;
-  min-width: 80px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 10px 8px;
-  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition: var(--ease-smooth);
-  display: flex;
-  flex-direction: column;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.tab-btn .tab-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  color: var(--text-secondary);
+  transition: var(--ease-smooth);
+}
+
+.tab-btn .tab-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
 }
 
 .tab-btn:hover {
@@ -269,13 +282,12 @@ body {
   transform: translateY(-1px);
 }
 
-.tab-btn:active {
-  transform: scale(0.96);
+.tab-btn:hover .tab-icon {
+  color: var(--text-white);
 }
 
-.tab-btn span {
-  font-size: 1.25rem;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+.tab-btn:active {
+  transform: scale(0.96);
 }
 
 /* Active Glowing Tab State */
@@ -284,11 +296,11 @@ body {
   color: #ffffff !important;
   border-color: transparent !important;
   box-shadow: var(--accent-glow) !important;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.tab-btn.active span {
-  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4));
+.tab-btn.active .tab-icon {
+  color: #ffffff !important;
 }
 
 /* ==================== TAB CONTENT ==================== */
