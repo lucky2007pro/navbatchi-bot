@@ -6,9 +6,9 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand, BotCommandScopeDefault
+from aiogram.types import BotCommand, BotCommandScopeDefault, MenuButtonWebApp, WebAppInfo
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, WEBAPP_URL
 from database.db import init_db
 from handlers import common, group, admin, finance, duty_actions
 from services.scheduler import setup_scheduler
@@ -43,6 +43,19 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="help", description="📖 Qo'llanma va yordam"),
     ]
     await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+
+    # Pastki chap burchakdagi doimiy Web App menyu tugmasini o'rnatish
+    if WEBAPP_URL and WEBAPP_URL.startswith("https://"):
+        try:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="Smart Kvartira",
+                    web_app=WebAppInfo(url=WEBAPP_URL)
+                )
+            )
+            logger.info(f"Burchakdagi Web App menyu tugmasi o'rnatildi: {WEBAPP_URL}")
+        except Exception as e:
+            logger.warning(f"Menu Button o'rnatishda xatolik: {e}")
 
 async def main():
     if not BOT_TOKEN or BOT_TOKEN == "YOUR_TELEGRAM_BOT_TOKEN_HERE":

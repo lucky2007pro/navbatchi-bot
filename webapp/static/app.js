@@ -75,10 +75,12 @@ function closeModals() {
 
 // Barcha ma'lumotlarni yuklash (Guruh + Moliya)
 async function loadAllData() {
-  const chatId = getUrlParam("chat_id");
+  let chatId = getUrlParam("chat_id");
+  if (!chatId && tg?.initDataUnsafe?.user?.id) {
+    chatId = tg.initDataUnsafe.user.id;
+  }
   if (!chatId) {
-    showError("Guruh identifikatori (chat_id) topilmadi.", "Iltimos, ushbu Web App'ni botdagi tugma orqali oching.");
-    return;
+    chatId = 1;
   }
   appState.chatId = chatId;
 

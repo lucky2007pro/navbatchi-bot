@@ -50,16 +50,18 @@ async def handle_get_group_data(request: web.Request) -> web.Response:
     except ValueError:
         return web.json_response({"success": False, "error": "Noto'g'ri chat_id formati"}, status=400)
 
-    group = await queries.get_group(chat_id)
-    if not group:
-        return web.json_response({
-            "success": False,
-            "error": "Guruh topilmadi. Avval guruhda botga biror buyruq yuboring (/start yoki /help)."
-        }, status=404)
-
     # Foydalanuvchining Telegram initData tekshiruvi
     init_data_raw = request.headers.get("X-Telegram-Init-Data") or request.query.get("init_data", "")
     validated_data = validate_telegram_init_data(init_data_raw, BOT_TOKEN) if init_data_raw else None
+
+    group = await queries.get_group(chat_id)
+    if not group:
+        title = "Smart Kvartira"
+        if validated_data and "user" in validated_data:
+            name = validated_data["user"].get("first_name", "")
+            title = f"{name} Kvartirasi" if name else "Smart Kvartira"
+        await queries.register_or_update_group(chat_id, title)
+        group = await queries.get_group(chat_id)
 
     is_admin = True
     user_info = None
