@@ -67,22 +67,59 @@ HELP_TEXT = """
 • /tozalash — Navbatchilar yoki vazifalar ro'yxatini tozalash
 """
 
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from config import WEBAPP_URL
+
+def get_webapp_keyboard(chat_id: int) -> InlineKeyboardMarkup:
+    """Guruh uchun Web App ochish tugmasini yaratadi."""
+    webapp_url = f"{WEBAPP_URL}?chat_id={chat_id}"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📱 Web App orqali ochish",
+                    web_app=WebAppInfo(url=webapp_url)
+                )
+            ]
+        ]
+    )
+
 @router.message(CommandStart())
 async def cmd_start(message: types.Message):
     if message.chat.type == ChatType.PRIVATE:
-        await message.answer(START_HELP_PRIVATE, parse_mode="HTML")
+        await message.answer(
+            START_HELP_PRIVATE,
+            reply_markup=get_webapp_keyboard(message.chat.id),
+            parse_mode="HTML"
+        )
     else:
         # Guruhda start bosilganda guruhni bazaga yozamiz
         await queries.register_or_update_group(message.chat.id, message.chat.title or "Nomsiz guruh")
         await message.answer(
             f"👋 Assalomu alaykum! <b>{message.chat.title}</b> guruhida Navbatchilik boti faollashtirildi.\n\n"
-            f"⚙️ Sozlash uchun /navbatchilar yoki /help buyrug'idan foydalaning.",
+            f"⚙️ Sozlash uchun quyidagi Web App tugmasidan yoki /help buyrug'idan foydalaning.",
+            reply_markup=get_webapp_keyboard(message.chat.id),
             parse_mode="HTML"
         )
 
+@router.message(Command("webapp"))
+async def cmd_webapp(message: types.Message):
+    """Web App ni ochish buyrug'i."""
+    chat_title = message.chat.title or "Navbatchilik"
+    await queries.register_or_update_group(message.chat.id, chat_title)
+    await message.answer(
+        f"📱 <b>{chat_title}</b> navbatchilik va kvartira boshqaruvini Web App orqali ochish:",
+        reply_markup=get_webapp_keyboard(message.chat.id),
+        parse_mode="HTML"
+    )
+
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer(HELP_TEXT, parse_mode="HTML")
+    await message.answer(
+        HELP_TEXT,
+        reply_markup=get_webapp_keyboard(message.chat.id),
+        parse_mode="HTML"
+    )
 
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=PROMOTED_TRANSITION))
