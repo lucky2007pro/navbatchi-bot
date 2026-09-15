@@ -9,6 +9,7 @@ from aiogram.enums import ChatType
 from database import queries
 from services.duty_manager import parse_members_text, parse_tasks_text, build_duty_message, advance_to_next_duty
 from handlers.utils import is_admin
+from handlers.common import get_webapp_keyboard
 
 router = Router()
 
@@ -322,7 +323,11 @@ async def cmd_holat(message: types.Message):
         f"💡 <i>Vaqtni o'zgartirish: /vaqt 08:30</i>\n"
         f"💡 <i>Kunlarni o'zgartirish: /kunlar</i>"
     )
-    await message.reply(text, parse_mode="HTML")
+    await message.reply(
+        text,
+        reply_markup=get_webapp_keyboard(message.chat.id),
+        parse_mode="HTML"
+    )
 
 # ==================== TOZALASH (/tozalash) ====================
 

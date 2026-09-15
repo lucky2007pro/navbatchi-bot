@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.enums import ChatType
 from database import queries
 from services.duty_manager import build_duty_message, get_current_duty_info
+from handlers.common import get_webapp_keyboard
 
 router = Router()
 
@@ -17,12 +18,13 @@ async def cmd_navbatchi(message: types.Message):
     if not duty_msg:
         await message.answer(
             "⚠️ <b>Navbatchilar ro'yxati hali kiritilmagan!</b>\n\n"
-            "Guruh admini /navbatchilar buyrug'i orqali ro'yxatni kiritishi mumkin.",
+            "Guruh admini quyidagi Web App tugmasi orqali ro'yxatni kiritishi mumkin.",
+            reply_markup=get_webapp_keyboard(message.chat.id),
             parse_mode="HTML"
         )
         return
 
-    await message.answer(duty_msg, parse_mode="HTML")
+    await message.answer(duty_msg, reply_markup=get_webapp_keyboard(message.chat.id), parse_mode="HTML")
 
 @router.message(Command("jadval"))
 async def cmd_jadval(message: types.Message):
@@ -64,7 +66,11 @@ async def cmd_jadval(message: types.Message):
     notify_time = group.get("notify_time", "08:00") if group else "08:00"
     lines.append(f"⏰ <i>Eslatma vaqti: har kuni soat {notify_time}</i>")
 
-    await message.answer("\n".join(lines), parse_mode="HTML")
+    await message.answer(
+        "\n".join(lines),
+        reply_markup=get_webapp_keyboard(message.chat.id),
+        parse_mode="HTML"
+    )
 
 @router.message(Command("vazifalar"))
 async def cmd_vazifalar(message: types.Message):
@@ -77,7 +83,8 @@ async def cmd_vazifalar(message: types.Message):
     if not tasks:
         await message.answer(
             "📋 <b>Guruhda hali kunlik vazifalar belgilanmagan!</b>\n\n"
-            "Guruh admini /vazifalar_sozlash buyrug'i orqali vazifalar ro'yxatini kiritishi mumkin.",
+            "Guruh admini Web App yoki /vazifalar_sozlash buyrug'i orqali vazifalar ro'yxatini kiritishi mumkin.",
+            reply_markup=get_webapp_keyboard(message.chat.id),
             parse_mode="HTML"
         )
         return
@@ -90,6 +97,10 @@ async def cmd_vazifalar(message: types.Message):
         lines.append(f"<b>{idx}.</b> {t['task_text']}")
 
     lines.append("")
-    lines.append("<i>Admin vazifalarni o'zgartirish uchun: /vazifalar_sozlash</i>")
+    lines.append("<i>Admin vazifalarni o'zgartirish uchun Web App'dan foydalanishi mumkin:</i>")
 
-    await message.answer("\n".join(lines), parse_mode="HTML")
+    await message.answer(
+        "\n".join(lines),
+        reply_markup=get_webapp_keyboard(message.chat.id),
+        parse_mode="HTML"
+    )

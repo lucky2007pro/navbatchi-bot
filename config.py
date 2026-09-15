@@ -13,3 +13,8 @@ DEFAULT_WORK_DAYS = os.getenv("DEFAULT_WORK_DAYS", "workdays_sat")
 
 # Vaqt mintaqasi (O'zbekiston uchun Asia/Tashkent)
 TIMEZONE = "Asia/Tashkent"
+
+# Telegram Web App sozlamalari
+WEBAPP_HOST = os.getenv("WEBAPP_HOST", "0.0.0.0")
+WEBAPP_PORT = int(os.getenv("WEBAPP_PORT", "8080"))
+WEBAPP_URL = os.getenv("WEBAPP_URL", "http://localhost:8080")

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart Kvartira - Talabalar Boshqaruvi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Telegram WebApp JS SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app-container" class="app-container">
+    <!-- Yuklanish indikatori -->
+    <div id="loading-spinner" class="loading-container">
+      <div class="spinner"></div>
+      <p>Kvartira ma'lumotlari yuklanmoqda...</p>
+    </div>
+
+    <!-- Xatolik ekrani -->
+    <div id="error-screen" class="error-container hidden">
+      <div class="error-icon">⚠️</div>
+      <h3 id="error-title">Xatolik yuz berdi</h3>
+      <p id="error-desc">Ma'lumotlarni yuklab bo'lmadi.</p>
+      <button class="btn btn-primary" onclick="location.reload()">Qayta yuklash</button>
+    </div>
+
+    <!-- Asosiy ilova -->
+    <div id="main-content" class="main-content hidden">
+      <!-- Guruh haqida Header -->
+      <header class="group-header">
+        <div class="header-avatar" id="group-avatar">🏠</div>
+        <div class="header-info">
+          <h1 id="group-title" class="group-title">Smart Kvartira</h1>
+          <div class="header-badges">
+            <span id="role-badge" class="badge badge-admin">Admin</span>
+            <span id="status-badge" class="badge badge-active">Faol</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 5 TALIK TAB NAVIGATSIYA -->
+      <nav class="tabs-nav scrollable">
+        <button class="tab-btn active" data-tab="duty">
+          <span>🧹</span> Navbat
+        </button>
+        <button class="tab-btn" data-tab="finance">
+          <span>💸</span> Kassa
+        </button>
+        <button class="tab-btn" data-tab="rent">
+          <span>🏠</span> Ijara
+        </button>
+        <button class="tab-btn" data-tab="shopping">
+          <span>🛒</span> Bozorlik
+        </button>
+        <button class="tab-btn" data-tab="settings">
+          <span>⚙️</span> Sozlama
+        </button>
+      </nav>
+
+      <!-- ==================== TAB 1: NAVBATCHILIK ==================== -->
+      <div id="tab-duty" class="tab-pane active">
+        <!-- Bugungi navbatchi kartochkasi -->
+        <section class="current-duty-card" id="current-duty-card">
+          <div class="duty-card-header">
+            <span class="duty-tag">🧹 BUGUNGI NAVBATCHI</span>
+            <button id="btn-next-duty" class="btn btn-sm btn-ghost" title="Navbatni keyingisiga surish">
+              ⏭️ Keyingisi
+            </button>
+          </div>
+          <div class="duty-person">
+            <div class="duty-avatar" id="duty-avatar">👤</div>
+            <div class="duty-details">
+              <h2 id="duty-name" class="duty-name">Belgilanmagan</h2>
+              <p id="duty-username" class="duty-username">@username</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="tab-header">
+          <span class="section-title">Navbatchilar tartibi (<span id="members-count">0</span>)</span>
+          <button id="btn-add-member" class="btn btn-sm btn-primary">➕ A'zo qo'shish</button>
+        </div>
+        <div id="members-list" class="items-list"></div>
+
+        <div class="tab-header" style="margin-top: 24px;">
+          <span class="section-title">Kunlik vazifalar (<span id="tasks-count">0</span>)</span>
+          <button id="btn-add-task" class="btn btn-sm btn-primary">➕ Vazifa</button>
+        </div>
+        <div id="tasks-list" class="items-list"></div>
+      </div>
+
+      <!-- ==================== TAB 2: KASSA VA XARAJATLAR ==================== -->
+      <div id="tab-finance" class="tab-pane">
+        <!-- Kassa Balansi Kartochkasi -->
+        <div class="balance-card">
+          <span class="balance-label">Kassa Qoldig'i (Fond)</span>
+          <div class="balance-amount" id="fund-balance-display">0 so'm</div>
+          <div class="balance-sub">
+            Bu oydagi jami xarajat: <b id="month-expense-display">0 so'm</b>
+          </div>
+          <div class="balance-actions">
+            <button id="btn-open-income-modal" class="btn btn-income">
+              ➕ Pul qo'shish (Kirim)
+            </button>
+            <button id="btn-open-expense-modal" class="btn btn-expense">
+              ➖ Xarajat kiritish
+            </button>
+          </div>
+        </div>
+
+        <!-- So'nggi xarajatlar ro'yxati -->
+        <div class="tab-header" style="margin-top: 20px;">
+          <span class="section-title">Xarajatlar tarixi</span>
+        </div>
+        <div id="expenses-list" class="items-list">
+          <!-- Dinamik xarajatlar -->
+        </div>
+      </div>
+
+      <!-- ==================== TAB 3: IJARA VA TO'LOVLAR ==================== -->
+      <div id="tab-rent" class="tab-pane">
+        <div class="rent-card">
+          <div class="rent-card-header">
+            <div>
+              <span class="rent-title">Oylik Ijara Haqiqati</span>
+              <div class="rent-total" id="rent-total-display">0 so'm</div>
+            </div>
+            <button id="btn-open-rent-settings" class="btn btn-sm btn-ghost">⚙️ Sozlash</button>
+          </div>
+          <div class="rent-stats">
+            <div class="rent-stat-box">
+              <span class="stat-title">Kishi boshiga</span>
+              <span class="stat-value" id="rent-per-person">0 so'm</span>
+            </div>
+            <div class="rent-stat-box">
+              <span class="stat-title">To'lov sanasi</span>
+              <span class="stat-value" id="rent-due-day">Har oyning 5-kuni</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-header" style="margin-top: 20px;">
+          <span class="section-title">Xonadoshlar to'lov holati (<span id="current-month-label">Bu oy</span>)</span>
+        </div>
+        <div id="rent-members-list" class="items-list">
+          <!-- A'zolarning ijara to'lov statusi -->
+        </div>
+      </div>
+
+      <!-- ==================== TAB 4: BOZORLIK RO'YXATI ==================== -->
+      <div id="tab-shopping" class="tab-pane">
+        <!-- Yangi mahsulot kiritish qatori -->
+        <div class="shopping-input-row">
+          <input type="text" id="input-shopping-title" class="form-input" placeholder="Mahsulot nomi (masalan: Moy, Go'sht, Non)...">
+          <button id="btn-add-shopping" class="btn btn-primary">Qo'shish</button>
+        </div>
+
+        <div class="tab-header" style="margin-top: 14px;">
+          <span class="section-title">Bozorlik ro'yxati</span>
+          <button id="btn-clear-bought" class="btn btn-sm btn-ghost" title="Olinganlarni tozalash">
+            🧹 Olinganlarni tozalash
+          </button>
+        </div>
+        <div id="shopping-list" class="items-list">
+          <!-- Bozorlik mahsulotlari -->
+        </div>
+      </div>
+
+      <!-- ==================== TAB 5: SOZLAMALAR ==================== -->
+      <div id="tab-settings" class="tab-pane">
+        <div class="settings-card">
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-title">⏰ Eslatma vaqti</span>
+              <span class="setting-hint">Har kuni bot navbatchini elon qiladigan vaqt</span>
+            </div>
+            <input type="time" id="setting-notify-time" class="input-time" value="08:00">
+          </div>
+
+          <hr class="divider">
+
+          <div class="setting-item vertical">
+            <div class="setting-label">
+              <span class="setting-title">📅 Ish kunlari rejimi</span>
+              <span class="setting-hint">Qaysi kunlari bildirishnoma yuborilsin</span>
+            </div>
+            <div class="radio-group" id="setting-work-days">
+              <label class="radio-card">
+                <input type="radio" name="work_days" value="workdays_sat" checked>
+                <div class="radio-content">
+                  <span class="radio-title">Dushanba — Shanba</span>
+                  <span class="radio-sub">6 kunlik rejim</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="work_days" value="workdays">
+                <div class="radio-content">
+                  <span class="radio-title">Dushanba — Juma</span>
+                  <span class="radio-sub">5 kunlik rejim</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="work_days" value="all">
+                <div class="radio-content">
+                  <span class="radio-title">Har kuni</span>
+                  <span class="radio-sub">Dushanba — Yakshanba</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-title">🔔 Avtomatik bildirishnoma</span>
+              <span class="setting-hint">Bot har kuni navbatchini guruhga yuborishi</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-is-active" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div id="desktop-save-container" class="save-bar-static" style="margin-top: 16px;">
+          <button id="btn-save" class="btn btn-save">
+            💾 Sozlamalarni saqlash
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Navbatchi qo'shish -->
+  <div id="modal-member" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Yangi navbatchi qo'shish</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Ismi *</label>
+          <input type="text" id="input-member-name" class="form-input" placeholder="Masalan: Hojiakbar">
+        </div>
+        <div class="form-group">
+          <label>Telegram Usernamesi (@siz)</label>
+          <input type="text" id="input-member-username" class="form-input" placeholder="Masalan: hojiakbar_dev">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-add-member" class="btn btn-primary">Qo'shish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Vazifa qo'shish -->
+  <div id="modal-task" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Yangi vazifa qo'shish</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Vazifa matni *</label>
+          <textarea id="input-task-text" class="form-textarea" rows="3" placeholder="Masalan: Idishlarni yuvish va oshxonani tozalash"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-add-task" class="btn btn-primary">Qo'shish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Kassaga pul qo'shish (Kirim) -->
+  <div id="modal-income" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Kassaga Pul Qo'shish (Kirim)</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Kim pul tashladi? *</label>
+          <select id="select-income-member" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label>Summa (so'm) *</label>
+          <input type="number" id="input-income-amount" class="form-input" placeholder="Masalan: 100000" step="5000">
+        </div>
+        <div class="form-group">
+          <label>Izoh (ixtiyoriy)</label>
+          <input type="text" id="input-income-note" class="form-input" placeholder="Masalan: Sentabr oylik fondi uchun">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-income" class="btn btn-primary">Kassaga qo'shish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Xarajat kiritish (Chiqim) -->
+  <div id="modal-expense" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Yangi Xarajat Kiritish</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nima sotib olindi? *</label>
+          <input type="text" id="input-expense-title" class="form-input" placeholder="Masalan: Go'sht, kartoshka va piyoz">
+        </div>
+        <div class="form-group">
+          <label>Summa (so'm) *</label>
+          <input type="number" id="input-expense-amount" class="form-input" placeholder="Masalan: 65000" step="1000">
+        </div>
+        <div class="form-group">
+          <label>Kim xarid qildi? *</label>
+          <select id="select-expense-member" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label>Qaysi puldan to'landi? *</label>
+          <select id="select-expense-source" class="form-input">
+            <option value="fund">💰 Kassadan (Fonddan yechiladi)</option>
+            <option value="personal">👤 O'z cho'ntagidan (Shaxsiy)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kategoriya</label>
+          <select id="select-expense-category" class="form-input">
+            <option value="Bozorlik">🛒 Bozorlik / Oziq-ovqat</option>
+            <option value="Kommunal">💡 Wi-Fi / Kommunal</option>
+            <option value="Xo'jalik">🧼 Maishiy kimyo / Tozalik</option>
+            <option value="Boshqa">📦 Boshqa</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-expense" class="btn btn-primary">Saqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Ijara sozlamalari -->
+  <div id="modal-rent-settings" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Ijara Sozlamalari</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Oylik umumiy ijara summasi (so'm) *</label>
+          <input type="number" id="input-rent-total" class="form-input" placeholder="Masalan: 3500000" step="50000">
+        </div>
+        <div class="form-group">
+          <label>Har oyning qaysi sanasigacha to'lanadi? *</label>
+          <input type="number" id="input-rent-due-day" class="form-input" placeholder="5" min="1" max="31">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-rent-settings" class="btn btn-primary">Saqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

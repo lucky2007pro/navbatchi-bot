@@ -10,8 +10,9 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import common, group, admin
+from handlers import common, group, admin, finance
 from services.scheduler import setup_scheduler
+from webapp.server import start_webapp_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,15 +26,15 @@ logger = logging.getLogger("NavbatchilikBot")
 async def setup_bot_commands(bot: Bot):
     """Telegram menyusiga bot buyruqlarini o'rnatish."""
     commands = [
+        BotCommand(command="webapp", description="📱 Smart Kvartira Web App"),
+        BotCommand(command="kassa", description="💰 Kassa va oylik xarajatlar"),
+        BotCommand(command="xarajat", description="💸 Yangi xarajat yozish"),
+        BotCommand(command="ijara", description="🏠 Ijara holati va to'lovlar"),
+        BotCommand(command="bozorlik", description="🛒 Bozorlik ro'yxati"),
         BotCommand(command="navbatchi", description="Bugungi navbatchi va vazifalar"),
         BotCommand(command="jadval", description="To'liq navbatchilar jadvali"),
         BotCommand(command="vazifalar", description="Kunlik vazifalar ro'yxati"),
-        BotCommand(command="navbatchilar", description="[Admin] Navbatchilar ro'yxatini kiritish"),
-        BotCommand(command="vazifalar_sozlash", description="[Admin] Kunlik vazifalarni kiritish"),
-        BotCommand(command="keyingi", description="[Admin] Navbatni keyingi a'zoga surish"),
-        BotCommand(command="vaqt", description="[Admin] Eslatma vaqtini belgilash"),
-        BotCommand(command="kunlar", description="[Admin] Ish kunlarini sozlash"),
-        BotCommand(command="holat", description="[Admin] Guruh sozlamalari"),
+        BotCommand(command="holat", description="[Admin] Kvartira sozlamalari"),
         BotCommand(command="help", description="Qo'llanma va yordam"),
     ]
     await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
@@ -60,8 +61,9 @@ async def main():
     )
     dp = Dispatcher(storage=MemoryStorage())
 
-    # 3. Routerlarni ulash (tartib muhim: admin, group, common)
+    # 3. Routerlarni ulash (tartib muhim: admin, finance, group, common)
     dp.include_router(admin.router)
+    dp.include_router(finance.router)
     dp.include_router(group.router)
     dp.include_router(common.router)
 
@@ -70,16 +72,24 @@ async def main():
     scheduler.start()
     logger.info("Scheduler muvaffaqiyatli ishga tushirildi.")
 
-    # 5. Buyruqlar menyusini sozlash
+    # 5. Telegram Web App serverini ishga tushirish
+    webapp_runner, webapp_site = await start_webapp_server(bot)
+
+    # 6. Buyruqlar menyusini sozlash
     try:
         await setup_bot_commands(bot)
     except Exception as e:
         logger.warning(f"Buyruqlarni menyuga o'rnatishda xatolik: {e}")
 
-    # 6. Eski yangilanishlarni tashlab yuborish va pollingni boshlash
+    # 7. Eski yangilanishlarni tashlab yuborish va pollingni boshlash
     logger.info("Bot ishga tushdi va xabarlarni kutmoqda...")
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot)
+    finally:
+        logger.info("To'xtatish jarayoni: Web App va bot to'xtatilmoqda...")
+        await webapp_runner.cleanup()
+        await bot.session.close()
 
 if __name__ == "__main__":
     try:
