@@ -7,7 +7,7 @@ from aiohttp import web
 from aiogram import Bot
 
 from config import BOT_TOKEN, WEBAPP_HOST, WEBAPP_PORT, BASE_DIR
-from database import queries, finance_queries
+from database import queries, finance_queries, rating_queries
 from services.duty_manager import get_current_duty_info, advance_to_next_duty
 from webapp.security import validate_telegram_init_data, is_chat_admin
 
@@ -72,6 +72,7 @@ async def handle_get_group_data(request: web.Request) -> web.Response:
     members = await queries.get_members(chat_id)
     tasks = await queries.get_tasks(chat_id)
     current_duty, _, current_index = await get_current_duty_info(chat_id)
+    ratings = await rating_queries.get_member_ratings_leaderboard(chat_id)
 
     return web.json_response({
         "success": True,
@@ -80,6 +81,7 @@ async def handle_get_group_data(request: web.Request) -> web.Response:
         "tasks": tasks,
         "current_duty": current_duty,
         "current_index": current_index,
+        "ratings": ratings,
         "is_admin": is_admin,
         "user": user_info
     })

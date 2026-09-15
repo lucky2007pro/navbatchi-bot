@@ -71,18 +71,33 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from config import WEBAPP_URL
 
 def get_webapp_keyboard(chat_id: int) -> InlineKeyboardMarkup:
-    """Guruh uchun Web App ochish tugmasini yaratadi."""
+    """Guruh yoki shaxsiy chat uchun Web App ochish tugmasini yaratadi."""
     webapp_url = f"{WEBAPP_URL}?chat_id={chat_id}"
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="📱 Web App orqali ochish",
-                    web_app=WebAppInfo(url=webapp_url)
-                )
+    if chat_id < 0:
+        # Telegram guruhlarda inline tugmaga 'web_app' ruxsat bermaydi (BUTTON_TYPE_INVALID xatosi beradi).
+        # Guruhlar uchun to'g'ridan-to'g'ri 'url' tugmasi ishlatiladi:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📱 Web App orqali ochish",
+                        url=webapp_url
+                    )
+                ]
             ]
-        ]
-    )
+        )
+    else:
+        # Shaxsiy chatda 'web_app' to'liq ishlaydi
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📱 Web App orqali ochish",
+                        web_app=WebAppInfo(url=webapp_url)
+                    )
+                ]
+            ]
+        )
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message):

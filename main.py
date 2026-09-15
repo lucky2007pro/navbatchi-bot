@@ -10,7 +10,7 @@ from aiogram.types import BotCommand, BotCommandScopeDefault, MenuButtonWebApp, 
 
 from config import BOT_TOKEN, WEBAPP_URL
 from database.db import init_db
-from handlers import common, group, admin, finance, duty_actions
+from handlers import common, group, admin, finance, duty_actions, rating
 from services.scheduler import setup_scheduler
 from webapp.server import start_webapp_server
 
@@ -33,6 +33,8 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="jadval", description="📅 To'liq navbatchilar jadvali"),
         BotCommand(command="vazifalar", description="📋 Kunlik vazifalar ro'yxati"),
         BotCommand(command="keyingi", description="👉 Navbatni keyingisiga surish"),
+        BotCommand(command="webapp", description="📱 Smart Kvartira Web App"),
+        BotCommand(command="reyting", description="🏆 Navbatchilar reytingi"),
         BotCommand(command="kassa", description="💰 Kassa va oylik xarajatlar"),
         BotCommand(command="xarajat", description="💸 Yangi xarajat yozish"),
         BotCommand(command="ijara", description="🏠 Ijara holati va to'lovlar"),
@@ -79,10 +81,11 @@ async def main():
     )
     dp = Dispatcher(storage=MemoryStorage())
 
-    # 3. Routerlarni ulash (tartib: duty_actions, admin, finance, group, common)
+    # 3. Routerlarni ulash (tartib: duty_actions, admin, finance, rating, group, common)
     dp.include_router(duty_actions.router)
     dp.include_router(admin.router)
     dp.include_router(finance.router)
+    dp.include_router(rating.router)
     dp.include_router(group.router)
     dp.include_router(common.router)
 

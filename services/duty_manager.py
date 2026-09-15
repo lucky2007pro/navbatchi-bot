@@ -96,7 +96,7 @@ async def get_current_duty_info(chat_id: int) -> Tuple[Optional[dict], List[dict
     current_member["is_temporary"] = False
     return current_member, members, current_index
 
-async def build_duty_message(chat_id: int, is_automatic: bool = False) -> Optional[str]:
+async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_summary: Optional[dict] = None) -> Optional[str]:
     """
     Guruh uchun navbatchilik xabari matnini (HTML formatida) tayyorlaydi.
     """
@@ -154,6 +154,26 @@ async def build_duty_message(chat_id: int, is_automatic: bool = False) -> Option
         f"👤 <b>Bugungi navbatchi:</b> {duty_tag}{temp_note}{next_member_text}",
         ""
     ]
+
+    # Oldingi navbatchilik bahosi natijasi (agar mavjud bo'lsa)
+    if rating_summary:
+        prev_name = rating_summary.get("member_name", "")
+        likes = rating_summary.get("likes_count", 0)
+        dislikes = rating_summary.get("dislikes_count", 0)
+        total = likes + dislikes
+        if total > 0:
+            if likes > dislikes:
+                status_note = "🌟 A'lo darajada!"
+            elif likes == dislikes:
+                status_note = "✅ Qoniqarli!"
+            else:
+                status_note = "⚠️ Kamchiliklar bor"
+        else:
+            status_note = "ℹ️ Baholanmadi"
+
+        lines.append(f"📊 <b>Oldingi navbatchilik bahosi ({prev_name}):</b>")
+        lines.append(f"   👍 {likes} ta  |  👎 {dislikes} ta — <i>{status_note}</i>")
+        lines.append("")
 
     # Vazifalar
     if tasks:

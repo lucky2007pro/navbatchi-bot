@@ -150,5 +150,34 @@ async def init_db():
             )
         """)
 
+        # 6. Navbatchilikni baholash sessiyalari
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS duty_ratings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                member_name TEXT NOT NULL,
+                duty_date TEXT NOT NULL,
+                likes_count INTEGER DEFAULT 0,
+                dislikes_count INTEGER DEFAULT 0,
+                message_id INTEGER DEFAULT 0,
+                is_closed INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chat_id) REFERENCES groups (chat_id) ON DELETE CASCADE
+            )
+        """)
+
+        # 7. Anonim ovozlar (Har bir foydalanuvchi faqat 1 marta ovoz berishi mumkin)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS duty_votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rating_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                vote_type TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(rating_id, user_id),
+                FOREIGN KEY (rating_id) REFERENCES duty_ratings (id) ON DELETE CASCADE
+            )
+        """)
+
         await conn.commit()
     logger.info("Ma'lumotlar bazasi jadvallari muvaffaqiyatli ishga tushirildi.")

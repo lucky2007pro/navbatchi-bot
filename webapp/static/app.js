@@ -22,6 +22,7 @@ let appState = {
   currentDuty: null,
   currentIndex: 0,
   isAdmin: false,
+  ratings: [],
 
   // Moliya va Bozorlik
   fundBalance: 0,
@@ -105,6 +106,7 @@ async function loadAllData() {
     appState.currentDuty = dataGroup.current_duty;
     appState.currentIndex = dataGroup.current_index || 0;
     appState.isAdmin = Boolean(dataGroup.is_admin);
+    appState.ratings = dataGroup.ratings || [];
 
     // 2. Moliya va Bozorlik ma'lumotlari
     const resFinance = await fetch(`/api/finance-data?chat_id=${encodeURIComponent(chatId)}`, { headers });
@@ -146,6 +148,7 @@ function renderAll() {
   renderCurrentDuty();
   renderMembers();
   renderTasks();
+  renderRatings();
   renderFinance();
   renderRent();
   renderShopping();
@@ -275,6 +278,43 @@ function renderTasks() {
     `;
     listEl.appendChild(item);
   });
+}
+
+function renderRatings() {
+  const container = document.getElementById("ratings-list");
+  if (!container) return;
+
+  const ratings = appState.ratings || [];
+  if (ratings.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>Hali navbatchiliklar baholanmagan.</p></div>`;
+    return;
+  }
+
+  const medals = ["🥇", "🥈", "🥉"];
+  container.innerHTML = ratings.map((r, idx) => {
+    const badge = idx < 3 ? medals[idx] : `#${idx + 1}`;
+    return `
+      <div class="list-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 1.3rem;">${badge}</span>
+          <div>
+            <div style="font-weight: 600; font-size: 0.95rem;">${escapeHtml(r.member_name)}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              ${r.total_duties} ta navbatchilik (${r.approval_rate}% ijobiy)
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; font-weight: 600; font-size: 0.85rem;">
+          <span style="color: #10b981; background: rgba(16, 185, 129, 0.12); padding: 4px 8px; border-radius: 6px;">
+            👍 ${r.total_likes}
+          </span>
+          <span style="color: #ef4444; background: rgba(239, 68, 68, 0.12); padding: 4px 8px; border-radius: 6px;">
+            👎 ${r.total_dislikes}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 // 💸 Moliya Tabini chizish
