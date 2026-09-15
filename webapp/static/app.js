@@ -184,13 +184,22 @@ function renderCurrentDuty() {
   const currentMember = appState.currentDuty;
   const nameEl = document.getElementById("duty-name");
   const userEl = document.getElementById("duty-username");
+  const timeEl = document.getElementById("duty-time-val");
+  const tasksEl = document.getElementById("duty-tasks-val");
 
   if (currentMember) {
     nameEl.textContent = currentMember.name || "Nomsiz";
-    userEl.textContent = currentMember.username ? `@${currentMember.username}` : "Username kiritilmagan";
+    userEl.textContent = currentMember.username ? `@${currentMember.username}` : "Username yo'q";
   } else {
     nameEl.textContent = "Hozircha belgilanmagan";
     userEl.textContent = "Navbatchilar ro'yxatini to'ldiring";
+  }
+
+  if (timeEl) {
+    timeEl.textContent = appState.group?.notify_time || "08:00";
+  }
+  if (tasksEl) {
+    tasksEl.textContent = `${appState.tasks.length} ta vazifa`;
   }
 }
 
@@ -293,24 +302,21 @@ function renderRatings() {
   const medals = ["🥇", "🥈", "🥉"];
   container.innerHTML = ratings.map((r, idx) => {
     const badge = idx < 3 ? medals[idx] : `#${idx + 1}`;
+    const topClass = idx === 0 ? "top-1" : "";
     return `
-      <div class="list-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;">
+      <div class="rating-item ${topClass}">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 1.3rem;">${badge}</span>
+          <span style="font-size: 1.4rem;">${badge}</span>
           <div>
-            <div style="font-weight: 600; font-size: 0.95rem;">${escapeHtml(r.member_name)}</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted);">
+            <div style="font-weight: 700; font-size: 0.98rem; color: #fff;">${escapeHtml(r.member_name)}</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
               ${r.total_duties} ta navbatchilik (${r.approval_rate}% ijobiy)
             </div>
           </div>
         </div>
-        <div style="display: flex; gap: 8px; font-weight: 600; font-size: 0.85rem;">
-          <span style="color: #10b981; background: rgba(16, 185, 129, 0.12); padding: 4px 8px; border-radius: 6px;">
-            👍 ${r.total_likes}
-          </span>
-          <span style="color: #ef4444; background: rgba(239, 68, 68, 0.12); padding: 4px 8px; border-radius: 6px;">
-            👎 ${r.total_dislikes}
-          </span>
+        <div style="display: flex; gap: 8px; font-weight: 700;">
+          <span class="badge-like">👍 ${r.total_likes}</span>
+          <span class="badge-dislike">👎 ${r.total_dislikes}</span>
         </div>
       </div>
     `;
@@ -558,6 +564,7 @@ function setupPermissions() {
   const addMemberBtn = document.getElementById("btn-add-member");
   const addTaskBtn = document.getElementById("btn-add-task");
   const nextDutyBtn = document.getElementById("btn-next-duty");
+  const nextDutyMainBtn = document.getElementById("btn-next-duty-main");
   const rentSettingsBtn = document.getElementById("btn-open-rent-settings");
   const saveBtn = document.getElementById("btn-save");
 
@@ -565,12 +572,14 @@ function setupPermissions() {
     if (addMemberBtn) addMemberBtn.classList.add("hidden");
     if (addTaskBtn) addTaskBtn.classList.add("hidden");
     if (nextDutyBtn) nextDutyBtn.classList.add("hidden");
+    if (nextDutyMainBtn) nextDutyMainBtn.classList.add("hidden");
     if (rentSettingsBtn) rentSettingsBtn.classList.add("hidden");
     if (saveBtn) saveBtn.classList.add("hidden");
   } else {
     if (addMemberBtn) addMemberBtn.classList.remove("hidden");
     if (addTaskBtn) addTaskBtn.classList.remove("hidden");
     if (nextDutyBtn) nextDutyBtn.classList.remove("hidden");
+    if (nextDutyMainBtn) nextDutyMainBtn.classList.remove("hidden");
     if (rentSettingsBtn) rentSettingsBtn.classList.remove("hidden");
     if (saveBtn) saveBtn.classList.remove("hidden");
   }
@@ -1007,7 +1016,7 @@ window.deleteTask = function (index) {
   renderTasks();
 };
 
-document.getElementById("btn-next-duty").addEventListener("click", async () => {
+const handleNextDutyAdvance = async () => {
   if (!appState.isAdmin) return;
   triggerHaptic("medium");
 
@@ -1028,7 +1037,10 @@ document.getElementById("btn-next-duty").addEventListener("click", async () => {
   } catch (err) {
     showToast(err.message, "error");
   }
-});
+};
+
+document.getElementById("btn-next-duty")?.addEventListener("click", handleNextDutyAdvance);
+document.getElementById("btn-next-duty-main")?.addEventListener("click", handleNextDutyAdvance);
 
 // Modallarni ochish (A'zo va Vazifa)
 document.getElementById("btn-add-member").addEventListener("click", () => {

@@ -1,25 +1,61 @@
+/* ==========================================================================
+   SMART KVARTIRA — ULTRA-PREMIUM SLEEK CYBER DARK THEME
+   Inspired by modern dark-mode interfaces: glowing accents, segmented pill tabs,
+   card containers, pill rows, and vibrant buttons.
+   ========================================================================== */
+
 :root {
-  --bg-primary: var(--tg-theme-bg-color, #0f172a);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #1e293b);
-  --text-primary: var(--tg-theme-text-color, #f8fafc);
-  --text-muted: var(--tg-theme-hint-color, #94a3b8);
-  --accent-color: var(--tg-theme-button-color, #38bdf8);
-  --accent-text: var(--tg-theme-button-text-color, #0f172a);
-  
-  --card-bg: rgba(30, 41, 59, 0.7);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --card-border-hover: rgba(56, 189, 248, 0.4);
-  --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
-  
-  --success-color: #10b981;
-  --danger-color: #ef4444;
-  --warning-color: #f59e0b;
+  /* Deep Luxury Dark Palette */
+  --bg-main: #090c15;
+  --bg-surface: #101522;
+  --bg-surface-elevated: #151b2b;
+  --bg-card: #131926;
+  --bg-card-inner: #0b0f19;
+  --bg-card-hover: #192134;
+
+  /* Typography Colors */
+  --text-white: #ffffff;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Vibrant Accents & Glows (Electric Neon Cyan / Sapphire) */
+  --accent-cyan: #00d2ff;
+  --accent-blue: #3a7bd5;
+  --accent-gradient: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+  --accent-glow: 0 4px 24px rgba(0, 210, 255, 0.4);
+  --accent-glow-sm: 0 2px 10px rgba(0, 210, 255, 0.25);
+
+  /* Alternative vibrant status colors */
+  --color-emerald: #10b981;
+  --emerald-glow: 0 4px 18px rgba(16, 185, 129, 0.35);
+  --color-rose: #f43f5e;
+  --rose-glow: 0 4px 18px rgba(244, 63, 94, 0.35);
+  --color-amber: #f59e0b;
+  --amber-glow: 0 4px 18px rgba(245, 158, 11, 0.35);
+  --color-purple: #8b5cf6;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-accent: rgba(0, 210, 255, 0.35);
+
+  /* Radii */
+  --radius-xl: 20px;
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --shadow-popup: 0 20px 60px rgba(0, 0, 0, 0.7);
+
+  /* Transitions */
+  --ease-smooth: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ==================== GLOBAL RESET ==================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -29,7 +65,11 @@
 
 body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-main);
+  background-image: 
+    radial-gradient(circle at 10% 0%, rgba(0, 210, 255, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 90% 20%, rgba(58, 123, 213, 0.05) 0%, transparent 45%);
+  background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.5;
   min-height: 100vh;
@@ -38,12 +78,31 @@ body {
 }
 
 .app-container {
-  max-width: 560px;
+  max-width: 580px;
   margin: 0 auto;
   padding: 16px;
 }
 
-/* Yuklanish & Xatolik */
+/* ==================== TOP SUBTITLE BANNER ==================== */
+.top-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 210, 255, 0.06);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  font-size: 0.8rem;
+  color: #7dd3fc;
+  font-weight: 500;
+}
+
+.top-banner-icon {
+  font-size: 1rem;
+}
+
+/* ==================== SPINNER & ERROR ==================== */
 .loading-container, .error-container {
   display: flex;
   flex-direction: column;
@@ -55,12 +114,13 @@ body {
 }
 
 .spinner {
-  width: 44px;
-  height: 44px;
-  border: 4px solid var(--card-border);
-  border-top-color: var(--accent-color);
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-cyan);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  box-shadow: var(--accent-glow-sm);
 }
 
 @keyframes spin {
@@ -75,29 +135,32 @@ body {
   display: none !important;
 }
 
-/* Header */
+/* ==================== HEADER SECTION ==================== */
 .group-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
   margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
 }
 
 .header-avatar {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #6366f1, #38bdf8);
+  width: 46px;
+  height: 46px;
+  background: var(--accent-gradient);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  font-size: 22px;
+  box-shadow: var(--accent-glow-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
 }
 
 .header-info {
@@ -108,59 +171,69 @@ body {
 .group-title {
   font-size: 1.15rem;
   font-weight: 700;
+  color: var(--text-white);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+  margin-bottom: 3px;
 }
 
 .header-badges {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.02em;
 }
 
 .badge-admin {
-  background: rgba(56, 189, 248, 0.15);
+  background: rgba(0, 210, 255, 0.12);
   color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  border: 1px solid rgba(0, 210, 255, 0.3);
 }
 
 .badge-member {
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(148, 163, 184, 0.12);
   color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .badge-active {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .badge-inactive {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
-/* Tab navigatsiya (Gorizontal scrollable) */
+/* ==================== SEGMENTED PILL TAB NAVIGATION ====================
+   Matches the day-picker bar from the reference image:
+   Rounded individual cards with icon on top, text below.
+   Active button has glowing vibrant background!
+   ====================================================================== */
 .tabs-nav {
   display: flex;
-  background: var(--bg-secondary);
-  padding: 4px;
-  border-radius: var(--radius-md);
-  margin-bottom: 18px;
-  border: 1px solid var(--card-border);
-  gap: 4px;
+  background: transparent;
+  padding: 2px 0 6px 0;
+  margin-bottom: 20px;
+  gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tabs-nav::-webkit-scrollbar {
@@ -169,49 +242,74 @@ body {
 
 .tab-btn {
   flex: 1;
-  min-width: 76px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
+  min-width: 80px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
   font-family: inherit;
-  font-size: 0.84rem;
-  font-weight: 600;
-  padding: 9px 6px;
-  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 10px 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--ease-smooth);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tab-btn:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-medium);
+  color: var(--text-white);
+  transform: translateY(-1px);
+}
+
+.tab-btn:active {
+  transform: scale(0.96);
 }
 
 .tab-btn span {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
+/* Active Glowing Tab State */
 .tab-btn.active {
-  background: var(--card-bg);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--card-border);
+  background: var(--accent-gradient) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: var(--accent-glow) !important;
+  transform: translateY(-2px);
 }
 
-/* Tab tarkibi */
+.tab-btn.active span {
+  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4));
+}
+
+/* ==================== TAB CONTENT ==================== */
 .tab-pane {
   display: none;
-  animation: fadeIn 0.25s ease-in-out;
+  animation: tabFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tab-pane.active {
   display: block;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tab-header {
@@ -223,189 +321,522 @@ body {
 
 .section-title {
   font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-weight: 800;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* Hozirgi navbatchi kartochkasi */
+/* ==================== FEATURED CURRENT DUTY CARD ====================
+   Exact layout from reference:
+   Container with left poster/avatar, right details, info pill rows, and wide CTA button!
+   ====================================================================== */
 .current-duty-card {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(99, 102, 241, 0.08));
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  margin-bottom: 18px;
-  box-shadow: 0 4px 20px -2px rgba(56, 189, 248, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xl);
+  padding: 18px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.current-duty-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.12) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .duty-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .duty-tag {
   font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #38bdf8;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  background: rgba(0, 210, 255, 0.1);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
 }
 
 .duty-person {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .duty-avatar {
-  width: 44px;
-  height: 44px;
-  background: rgba(56, 189, 248, 0.2);
-  border-radius: 50%;
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 2px solid rgba(0, 210, 255, 0.4);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.duty-details {
+  flex: 1;
+  min-width: 0;
 }
 
 .duty-name {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-white);
+  line-height: 1.2;
+  margin-bottom: 4px;
 }
 
 .duty-username {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+/* Info Pill Rows inside Card (Like Chiqadigan qism / Fandub) */
+.duty-info-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.info-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.info-pill-icon {
+  font-size: 1.05rem;
+  color: var(--accent-cyan);
+}
+
+.info-pill-label {
   color: var(--text-muted);
+}
+
+.info-pill-value {
+  color: var(--text-white);
+  font-weight: 700;
+  margin-left: auto;
+}
+
+/* Glowing Full-width CTA Button inside Card */
+.btn-duty-action {
+  width: 100%;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--accent-glow);
+  transition: var(--ease-smooth);
+}
+
+.btn-duty-action:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(0, 210, 255, 0.5);
+}
+
+.btn-duty-action:active {
+  transform: scale(0.98);
+}
+
+/* ==================== LIST ITEMS & CARDS ==================== */
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  transition: var(--ease-smooth);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.list-item:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.list-item.is-current {
+  border-color: rgba(0, 210, 255, 0.45);
+  background: rgba(0, 210, 255, 0.06);
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.15);
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.item-order {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.list-item.is-current .item-order {
+  background: var(--accent-gradient);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--accent-glow-sm);
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-title {
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: var(--text-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.item-current-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(0, 210, 255, 0.18);
+  color: var(--accent-cyan);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  margin-left: 6px;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ==================== REYTING (LEADERBOARD) ==================== */
+.rating-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  transition: var(--ease-smooth);
+}
+
+.rating-item:hover {
+  background: var(--bg-surface-elevated);
+}
+
+.rating-item.top-1 {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), var(--bg-surface));
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.15);
+}
+
+.badge-like {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.badge-dislike {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 /* ==================== MOLIYA VA KASSA KARTALARI ==================== */
 .balance-card {
-  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.2);
+  background: linear-gradient(145deg, #101524 0%, #151d32 60%, #0c111e 100%);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: var(--radius-xl);
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 210, 255, 0.08);
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-card::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 100px;
+  background: radial-gradient(ellipse, rgba(0, 210, 255, 0.15), transparent 70%);
+  pointer-events: none;
 }
 
 .balance-label {
-  font-size: 0.85rem;
-  color: #a5b4fc;
+  font-size: 0.82rem;
+  color: #7dd3fc;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 .balance-amount {
-  font-size: 2.2rem;
+  font-size: 2.4rem;
   font-weight: 800;
   color: #ffffff;
   margin: 6px 0;
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 40%, #bae6fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .balance-sub {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 16px;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+}
+
+.balance-sub b {
+  color: var(--text-white);
 }
 
 .balance-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .btn-income {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: var(--emerald-glow);
+  font-weight: 700;
+  border: none;
+}
+
+.btn-income:hover {
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
 }
 
 .btn-expense {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow: var(--rose-glow);
+  font-weight: 700;
+  border: none;
+}
+
+.btn-expense:hover {
+  box-shadow: 0 6px 24px rgba(244, 63, 94, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Xarajat itemi */
+.expense-amount-tag {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fb7185;
+  white-space: nowrap;
+}
+
+.expense-source-badge {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+
+.source-fund {
+  background: rgba(0, 210, 255, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(0, 210, 255, 0.25);
+}
+
+.source-personal {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 /* ==================== IJARA KARTASI ==================== */
 .rent-card {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(15, 23, 42, 0.8));
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: var(--radius-lg);
-  padding: 18px;
-  margin-bottom: 18px;
+  background: linear-gradient(145deg, #151722 0%, #1f1b29 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-card);
 }
 
 .rent-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .rent-title {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: #fbbf24;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.06em;
 }
 
 .rent-total {
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #fff;
+  letter-spacing: -0.01em;
 }
 
 .rent-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .rent-stat-box {
-  background: var(--bg-secondary);
-  border: 1px solid var(--card-border);
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
 }
 
 .stat-title {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .stat-value {
-  font-size: 0.98rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-top: 3px;
+}
+
+/* Ijara to'lov statusi tugmalari */
+.status-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-top: 2px;
+  cursor: pointer;
+  border: none;
+  transition: var(--ease-smooth);
+}
+
+.status-btn.paid {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.status-btn.unpaid {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.35);
 }
 
 /* ==================== BOZORLIK ==================== */
 .shopping-input-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .shopping-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 16px;
   border-radius: var(--radius-md);
-  transition: var(--transition);
+  transition: var(--ease-smooth);
 }
 
 .shopping-item.bought {
-  opacity: 0.55;
-  background: rgba(30, 41, 59, 0.4);
+  opacity: 0.5;
+  background: rgba(16, 21, 34, 0.5);
 }
 
 .shopping-item.bought .shopping-title {
@@ -422,504 +853,296 @@ body {
 }
 
 .shopping-check {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--accent-color);
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   color: transparent;
-  transition: var(--transition);
+  transition: var(--ease-smooth);
+  flex-shrink: 0;
 }
 
 .shopping-item.bought .shopping-check {
-  background: var(--success-color);
-  border-color: var(--success-color);
+  background: var(--color-emerald);
+  border-color: var(--color-emerald);
   color: white;
+  box-shadow: var(--emerald-glow);
 }
 
 .shopping-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-/* Elementlar ro'yxati */
-.items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  transition: var(--transition);
-}
-
-.list-item:hover {
-  border-color: var(--card-border-hover);
-}
-
-.list-item.is-current {
-  border-color: rgba(16, 185, 129, 0.5);
-  background: rgba(16, 185, 129, 0.06);
-}
-
-.item-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.item-order {
-  width: 28px;
-  height: 28px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-muted);
-}
-
-.item-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.item-title {
-  font-weight: 600;
   font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text-white);
 }
 
-.item-subtitle {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.item-current-pill {
-  font-size: 0.7rem;
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  padding: 1px 6px;
-  border-radius: 12px;
-  margin-left: 6px;
-  font-weight: 600;
-}
-
-.item-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* Xarajat itemi */
-.expense-amount-tag {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #ef4444;
-  white-space: nowrap;
-}
-
-.expense-source-badge {
-  font-size: 0.72rem;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.source-fund {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-}
-
-.source-personal {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-}
-
-/* Ijara to'lov statusi tugmalari */
-.status-btn {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: var(--transition);
-}
-
-.status-btn.paid {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-}
-
-.status-btn.unpaid {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-/* Tugmalar */
+/* ==================== BUTTONS ==================== */
 .btn {
   font-family: inherit;
   font-size: 0.9rem;
-  font-weight: 600;
-  border-radius: var(--radius-sm);
+  font-weight: 700;
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--ease-smooth);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  padding: 10px 18px;
+  gap: 6px;
 }
 
-.btn-sm {
-  padding: 6px 10px;
-  font-size: 0.8rem;
-}
-
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid transparent;
-}
-
-.btn-icon:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--card-border);
-}
-
-.btn-icon.btn-delete:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
-  background: var(--accent-color);
-  color: var(--accent-text);
+  background: var(--accent-gradient);
+  color: #ffffff;
+  box-shadow: var(--accent-glow-sm);
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  box-shadow: var(--accent-glow);
   transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: var(--bg-secondary);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
   color: var(--text-primary);
-  border: 1px solid var(--card-border);
+}
+
+.btn-secondary:hover {
+  background: #20293d;
+  color: #fff;
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary);
-  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
 }
 
-.empty-state {
-  text-align: center;
-  padding: 36px 16px;
-  color: var(--text-muted);
-  background: var(--card-bg);
-  border: 1px dashed var(--card-border);
-  border-radius: var(--radius-md);
-}
-
-/* Sozlamalar kartochkasi */
-.settings-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-}
-
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-}
-
-.setting-item.vertical {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.setting-label {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.setting-hint {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.input-time {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 600;
-  outline: none;
-}
-
-.divider {
-  border: none;
-  height: 1px;
-  background: var(--card-border);
-  margin: 10px 0;
-}
-
-/* Radio guruhi */
-.radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.radio-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.radio-card:hover {
-  border-color: var(--card-border-hover);
-}
-
-.radio-card input[type="radio"] {
-  accent-color: var(--accent-color);
-  width: 18px;
-  height: 18px;
-}
-
-.radio-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.radio-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.radio-sub {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-/* Switch toggle */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 28px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--card-border);
-  transition: 0.3s;
-  border-radius: 34px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--success-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-.btn-save {
-  width: 100%;
-  padding: 14px;
-  font-size: 1rem;
-  background: linear-gradient(135deg, #38bdf8, #6366f1);
+.btn-danger {
+  background: linear-gradient(135deg, #f43f5e, #dc2626);
   color: white;
-  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
+  box-shadow: var(--rose-glow);
 }
 
-/* Modal oynalar */
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 9px;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.btn-icon:hover {
+  border-color: var(--border-medium);
+  color: var(--text-white);
+}
+
+.btn-delete:hover {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #f43f5e;
+}
+
+/* ==================== FORMS & INPUTS ==================== */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.form-input, .form-select {
+  width: 100%;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: var(--text-white);
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: var(--ease-smooth);
+}
+
+.form-input:focus, .form-select:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 14px rgba(0, 210, 255, 0.25);
+  background: #0f1422;
+}
+
+.form-select option {
+  background: var(--bg-surface);
+  color: var(--text-white);
+}
+
+.form-help {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* Sozlamalar sahifasi */
+.settings-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.settings-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==================== MODALS ==================== */
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 6, 12, 0.8);
+  backdrop-filter: blur(16px);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
+  z-index: 999;
   padding: 16px;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease-in-out;
+  animation: modalOverlayFade 0.2s ease-out;
 }
 
-.modal-dialog {
-  background: var(--bg-secondary);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+@keyframes modalOverlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xl);
+  padding: 22px;
   width: 100%;
-  max-width: 440px;
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
+  max-width: 520px;
+  box-shadow: var(--shadow-popup);
+  animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid var(--card-border);
+  margin-bottom: 18px;
 }
 
 .modal-title {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-white);
 }
 
 .modal-close {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 18px;
+  font-size: 1.4rem;
   cursor: pointer;
   padding: 4px;
+  line-height: 1;
+  transition: var(--ease-smooth);
 }
 
-.modal-body {
-  padding: 16px;
+.modal-close:hover {
+  color: var(--text-white);
+}
+
+.modal-actions {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.modal-actions .btn {
+  flex: 1;
 }
 
-.form-group label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.form-input, .form-textarea {
-  background: var(--bg-primary);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 0.95rem;
-  outline: none;
-  transition: var(--transition);
-}
-
-.form-input:focus, .form-textarea:focus {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
-}
-
-.modal-footer {
-  padding: 12px 16px;
-  border-top: 1px solid var(--card-border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* Toast */
+/* ==================== TOAST ==================== */
 .toast {
   position: fixed;
-  bottom: 80px;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: #1e293b;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 30px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  color: var(--text-white);
+  padding: 12px 20px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
   font-size: 0.9rem;
-  font-weight: 600;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 2000;
-  transition: var(--transition);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--ease-smooth);
 }
 
 .toast.success {
-  border-color: rgba(16, 185, 129, 0.5);
-  background: #064e3b;
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), var(--emerald-glow);
 }
 
 .toast.error {
-  border-color: rgba(239, 68, 68, 0.5);
-  background: #7f1d1d;
+  border-color: rgba(244, 63, 94, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), var(--rose-glow);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 
 /* ==================== KASSA VA MOLIYA STILLARI ==================== */

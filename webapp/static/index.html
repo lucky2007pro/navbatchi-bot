@@ -6,7 +6,7 @@
   <title>Smart Kvartira - Talabalar Boshqaruvi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Telegram WebApp JS SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="/static/style.css">
@@ -29,6 +29,12 @@
 
     <!-- Asosiy ilova -->
     <div id="main-content" class="main-content hidden">
+      <!-- Yuqori axborot banneri -->
+      <div class="top-banner">
+        <span class="top-banner-icon">✨</span>
+        <span class="top-banner-text">Smart Kvartira — Navbatchilik, kassa va ijara nazorati</span>
+      </div>
+
       <!-- Guruh haqida Header -->
       <header class="group-header">
         <div class="header-avatar" id="group-avatar">🏠</div>
@@ -41,28 +47,28 @@
         </div>
       </header>
 
-      <!-- 5 TALIK TAB NAVIGATSIYA -->
+      <!-- 5 TALIK PREMIUM TAB NAVIGATSIYA -->
       <nav class="tabs-nav scrollable">
         <button class="tab-btn active" data-tab="duty">
           <span>🧹</span> Navbat
         </button>
         <button class="tab-btn" data-tab="finance">
-          <span>💸</span> Kassa
+          <span>💎</span> Kassa
         </button>
         <button class="tab-btn" data-tab="rent">
-          <span>🏠</span> Ijara
+          <span>🏢</span> Ijara
         </button>
         <button class="tab-btn" data-tab="shopping">
           <span>🛒</span> Bozorlik
         </button>
         <button class="tab-btn" data-tab="settings">
-          <span>⚙️</span> Sozlama
+          <span>⚡</span> Sozlama
         </button>
       </nav>
 
       <!-- ==================== TAB 1: NAVBATCHILIK ==================== -->
       <div id="tab-duty" class="tab-pane active">
-        <!-- Bugungi navbatchi kartochkasi -->
+        <!-- Bugungi navbatchi kartochkasi (Featured Cyber Card) -->
         <section class="current-duty-card" id="current-duty-card">
           <div class="duty-card-header">
             <span class="duty-tag">🧹 BUGUNGI NAVBATCHI</span>
@@ -77,6 +83,24 @@
               <p id="duty-username" class="duty-username">@username</p>
             </div>
           </div>
+
+          <!-- Info Pill Rows -->
+          <div class="duty-info-pills">
+            <div class="info-pill">
+              <span class="info-pill-icon">⏰</span>
+              <span class="info-pill-label">Eslatma vaqti:</span>
+              <span class="info-pill-value" id="duty-time-val">08:00</span>
+            </div>
+            <div class="info-pill">
+              <span class="info-pill-icon">📋</span>
+              <span class="info-pill-label">Kunlik vazifalar:</span>
+              <span class="info-pill-value" id="duty-tasks-val">0 ta</span>
+            </div>
+          </div>
+
+          <button id="btn-next-duty-main" class="btn-duty-action">
+            <span>▶</span> NAVBATNI KEYINGISIGA O'TKAZISH
+          </button>
         </section>
 
         <div class="tab-header">
