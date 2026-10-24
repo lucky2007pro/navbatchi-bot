@@ -134,3 +134,61 @@ async def clear_tasks(chat_id: int) -> None:
     async with get_db_connection() as conn:
         await conn.execute("DELETE FROM duty_tasks WHERE chat_id = ?", (chat_id,))
         await conn.commit()
+
+# ==================== VAQTINCHALIK NAVBATCHILIK VA ALMASHTIRISH SO'ROVLARI ====================
+
+async def get_member_by_id(member_id: int) -> Optional[dict]:
+    """ID bo'yicha navbatchi ma'lumotlarini oladi."""
+    async with get_db_connection() as conn:
+        async with conn.execute("SELECT * FROM duty_members WHERE id = ?", (member_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def set_temp_duty(chat_id: int, member_id: int, duty_type: str, original_id: int) -> None:
+    """
+    Bir martalik vaqtinchalik navbatchini belgilaydi.
+    duty_type: 'swap' (almashtirish) yoki 'skip' (o'tkazib yuborish).
+    """
+    async with get_db_connection() as conn:
+        await conn.execute("""
+            UPDATE groups
+            SET temp_duty_member_id = ?, temp_duty_type = ?, temp_duty_original_id = ?
+            WHERE chat_id = ?
+        """, (member_id, duty_type, original_id, chat_id))
+        await conn.commit()
+
+async def clear_temp_duty(chat_id: int) -> None:
+    """Bir martalik vaqtinchalik navbatchilikni tozalaydi (asl holiga qaytaradi)."""
+    async with get_db_connection() as conn:
+        await conn.execute("""
+            UPDATE groups
+            SET temp_duty_member_id = NULL, temp_duty_type = NULL, temp_duty_original_id = NULL
+            WHERE chat_id = ?
+        """, (chat_id,))
+        await conn.commit()
+
+async def create_swap_request(chat_id: int, from_member_id: int, to_member_id: int) -> int:
+    """Navbatchilikni almashtirish taklifini yaratadi va uning ID sini qaytaradi."""
+    async with get_db_connection() as conn:
+        cursor = await conn.execute("""
+            INSERT INTO duty_swap_requests (chat_id, from_member_id, to_member_id, status)
+            VALUES (?, ?, ?, 'pending')
+        """, (chat_id, from_member_id, to_member_id))
+        await conn.commit()
+        return cursor.lastrowid
+
+async def get_swap_request(request_id: int) -> Optional[dict]:
+    """Almashtirish taklifi ma'lumotlarini oladi."""
+    async with get_db_connection() as conn:
+        async with conn.execute("SELECT * FROM duty_swap_requests WHERE id = ?", (request_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def update_swap_request_status(request_id: int, status: str) -> None:
+    """Almashtirish taklifi holatini yangilaydi ('accepted', 'rejected', etc.)."""
+    async with get_db_connection() as conn:
+        await conn.execute("""
+            UPDATE duty_swap_requests SET status = ? WHERE id = ?
+        """, (status, request_id))
+        await conn.commit()
+

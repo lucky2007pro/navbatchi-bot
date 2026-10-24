@@ -66,22 +66,26 @@ DEFAULT_WORK_DAYS=workdays_sat
 
 ## 📋 Buyruqlar Ro'yxati
 
-| Buyruq | Kimlar uchun | Tavsif |
-|---|---|---|
-| `/navbatchi` | Barcha | Bugungi navbatchi va vazifalar ma'lumoti |
-| `/jadval` | Barcha | To'liq navbatchilar jadvali va hozirgi navbat |
-| `/vazifalar` | Barcha | Guruhdagi kunlik vazifalar ro'yxati |
-| `/navbatchilar` | Faqat Admin | Navbatchilar ro'yxatini kiritish/yangilash |
-| `/vazifalar_sozlash` | Faqat Admin | Vazifalar ro'yxatini kiritish/yangilash |
-| `/keyingi` | Faqat Admin | Navbatni keyingi navbatchiga majburiy surish |
-| `/vaqt 08:00` | Faqat Admin | Bildirishnoma yuborish vaqtini o'zgartirish |
-| `/kunlar` | Faqat Admin | Bildirishnoma kunlarini sozlash (inline menyu) |
-| `/holat` | Faqat Admin | Guruh statistikasi va sozlamalar holati |
-| `/tozalash` | Faqat Admin | Navbatchilar yoki vazifalar ro'yxatini tozalash |
-| `/help` | Barcha | Qo'llanma |
-# navbatchi-bot
-# navbatchi-bot
-# navbatchi-bot
-# navbatchi-bot
-# navbatchi-bot
-# navbatchi-bot
+| Buyruq | Tavsif |
+|---|---|
+| `/navbatchi` | Bugungi navbatchi, vazifalar va tezkor boshqaruv tugmalari |
+| `/almashtirish` (yoki `/swap`) | Navbatni boshqa a'zo bilan 1 martaga almashtirish (keyin joyiga qaytadi) |
+| `/otkazish` (yoki `/skip`) | Navbatni 1 martaga o'tkazib yuborish (keyin joyiga qaytadi) |
+| `/qaytarish` | Bir martalik almashish/o'tkazishni bekor qilish (asliga qaytarish) |
+| `/jadval` | To'liq navbatchilar jadvali va hozirgi navbat |
+| `/vazifalar` | Guruhdagi kunlik vazifalar ro'yxati |
+| `/keyingi` | Navbatni navbatdagi odamga o'tkazish |
+| `/navbatchilar` | Navbatchilar ro'yxatini kiritish/yangilash |
+| `/vazifalar_sozlash` | Vazifalar ro'yxatini kiritish/yangilash |
+| `/vaqt 08:00` | Bildirishnoma yuborish vaqtini o'zgartirish |
+| `/kunlar` | Bildirishnoma kunlarini sozlash (inline menyu) |
+| `/holat` | Guruh statistikasi va sozlamalar holati |
+| `/tozalash` | Navbatchilar yoki vazifalar ro'yxatini tozalash |
+| `/kassa` | Kvartira kassasi qoldig'i va oylik xarajatlar |
+| `/xarajat` | Tezkor xarajat yozish (masalan: `/xarajat 50000 Go'sht`) |
+| `/ijara` | Oylik ijara holati va to'lovlar monitoringi |
+| `/bozorlik` | Bozorlik ro'yxati |
+| `/help` | To'liq qo'llanma |
+
+> 💡 **Eslatma:** Bot ichki (kvartira / xonadoshlar) doirasi uchun mo'ljallanganligi sababli barcha sozlash va tahrirlash imkoniyatlari guruhdagi barcha a'zolar uchun ochiq.
+

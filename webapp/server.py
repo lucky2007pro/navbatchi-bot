@@ -61,21 +61,11 @@ async def handle_get_group_data(request: web.Request) -> web.Response:
     init_data_raw = request.headers.get("X-Telegram-Init-Data") or request.query.get("init_data", "")
     validated_data = validate_telegram_init_data(init_data_raw, BOT_TOKEN) if init_data_raw else None
 
-    is_admin = False
+    is_admin = True
     user_info = None
 
     if validated_data and "user" in validated_data:
         user_info = validated_data["user"]
-        user_id = user_info.get("id")
-        if user_id:
-            is_admin = await is_chat_admin(bot, chat_id, user_id)
-    elif chat_id > 0:
-        # Shaxsiy chat bo'lsa
-        is_admin = True
-    else:
-        # initData berilmagan bo'lsa (masalan tashqi brauzerdan ko'rilganda)
-        # Ma'lumotlarni ko'rishga ruxsat, lekin tahrirlashga yo'q
-        is_admin = False
 
     members = await queries.get_members(chat_id)
     tasks = await queries.get_tasks(chat_id)
@@ -206,20 +196,8 @@ async def handle_next_duty(request: web.Request) -> web.Response:
     })
 
 async def check_admin_helper(request: web.Request, chat_id: int) -> bool:
-    """Foydalanuvchi admin yoki oddiy a'zoligini tekshirish yordamchisi."""
-    bot: Bot = request.app["bot"]
-    init_data_raw = request.headers.get("X-Telegram-Init-Data") or request.query.get("init_data", "")
-    validated_data = validate_telegram_init_data(init_data_raw, BOT_TOKEN) if init_data_raw else None
-
-    if validated_data and "user" in validated_data:
-        user_id = validated_data["user"].get("id")
-        if user_id:
-            return await is_chat_admin(bot, chat_id, user_id)
-    elif chat_id > 0:
-        return True
-    elif not init_data_raw and WEBAPP_HOST in ("0.0.0.0", "127.0.0.1", "localhost"):
-        return True
-    return False
+    """Foydalanuvchi admin yoki oddiy a'zoligini tekshirish yordamchisi (barcha uchun ochiq)."""
+    return True
 
 # ==================== MOLIYA VA BOZORLIK API ====================
 

@@ -56,6 +56,14 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
             if not is_work_day(work_days, current_weekday):
                 continue
 
+            # Agar avval bildirishnoma yuborilgan bo'lsa, yangi kun uchun navbatni siljitamiz
+            if last_date:
+                await advance_to_next_duty(chat_id, notify_date=current_date_str)
+            else:
+                # Birinchi marta bo'lsa, hozirgi sanani qayd etamiz
+                cur_idx = group.get("current_index", 0)
+                await queries.update_group_index(chat_id, cur_idx, last_date=current_date_str)
+
             # Xabarni shakllantirish
             message_text = await build_duty_message(chat_id, is_automatic=True)
             if not message_text:
@@ -63,10 +71,17 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
                 continue
 
             try:
+                # Xabar ostidagi boshqaruv tugmalari (almashtirish, o'tkazib yuborish, Web App)
+                from handlers.duty_actions import get_duty_keyboard
+                updated_group = await queries.get_group(chat_id)
+                has_temp = bool(updated_group and updated_group.get("temp_duty_member_id"))
+                markup = get_duty_keyboard(chat_id, has_temp=has_temp)
+
                 # Guruhga yuborish
                 sent_msg = await bot.send_message(
                     chat_id=chat_id,
                     text=message_text,
+                    reply_markup=markup,
                     parse_mode="HTML"
                 )
 
@@ -80,8 +95,6 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
                 except TelegramBadRequest as pin_err:
                     logger.warning(f"Guruhda {chat_id} xabarni pin qilishga ruxsat yo'q: {pin_err}")
 
-                # Navbatni keyingi a'zoga siljitish va sanani saqlash
-                await advance_to_next_duty(chat_id, notify_date=current_date_str)
                 logger.info(f"Guruh {chat_id} ga navbatchilik xabari muvaffaqiyatli yuborildi va pin qilindi.")
 
             except TelegramForbiddenError:

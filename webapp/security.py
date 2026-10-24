@@ -66,14 +66,7 @@ def validate_telegram_init_data(init_data: str, bot_token: str = BOT_TOKEN, max_
 async def is_chat_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     """
     Foydalanuvchi berilgan chatda admin ekanligini tekshiradi.
-    Agar shaxsiy chat bo'lsa (chat_id > 0), avtomatik True qaytaradi.
+    Bu bot ichki doira (o'zimiz) uchun bo'lgani tufayli barcha a'zolarga tahrirlash huquqi beriladi.
     """
-    if chat_id > 0:
-        return True
+    return True
 
-    try:
-        member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-        return member.status in ("creator", "administrator")
-    except Exception as e:
-        logger.warning(f"Adminlik huquqini tekshirishda xatolik (chat: {chat_id}, user: {user_id}): {e}")
-        return False

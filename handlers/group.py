@@ -4,6 +4,7 @@ from aiogram.enums import ChatType
 from database import queries
 from services.duty_manager import build_duty_message, get_current_duty_info
 from handlers.common import get_webapp_keyboard
+from handlers.duty_actions import get_duty_keyboard
 
 router = Router()
 
@@ -18,13 +19,19 @@ async def cmd_navbatchi(message: types.Message):
     if not duty_msg:
         await message.answer(
             "⚠️ <b>Navbatchilar ro'yxati hali kiritilmagan!</b>\n\n"
-            "Guruh admini quyidagi Web App tugmasi orqali ro'yxatni kiritishi mumkin.",
+            "Guruh a'zolari /navbatchilar buyrug'i yoki Web App orqali ro'yxatni kiritishi mumkin.",
             reply_markup=get_webapp_keyboard(message.chat.id),
             parse_mode="HTML"
         )
         return
 
-    await message.answer(duty_msg, reply_markup=get_webapp_keyboard(message.chat.id), parse_mode="HTML")
+    group = await queries.get_group(message.chat.id)
+    has_temp = bool(group and group.get("temp_duty_member_id"))
+    await message.answer(
+        duty_msg,
+        reply_markup=get_duty_keyboard(message.chat.id, has_temp=has_temp),
+        parse_mode="HTML"
+    )
 
 @router.message(Command("jadval"))
 async def cmd_jadval(message: types.Message):

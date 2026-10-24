@@ -10,7 +10,7 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 
 from config import BOT_TOKEN
 from database.db import init_db
-from handlers import common, group, admin, finance
+from handlers import common, group, admin, finance, duty_actions
 from services.scheduler import setup_scheduler
 from webapp.server import start_webapp_server
 
@@ -26,16 +26,21 @@ logger = logging.getLogger("NavbatchilikBot")
 async def setup_bot_commands(bot: Bot):
     """Telegram menyusiga bot buyruqlarini o'rnatish."""
     commands = [
-        BotCommand(command="webapp", description="📱 Smart Kvartira Web App"),
+        BotCommand(command="navbatchi", description="🧹 Bugungi navbatchi va vazifalar"),
+        BotCommand(command="almashtirish", description="🔄 Navbatni 1 martaga almashtirish"),
+        BotCommand(command="otkazish", description="⏭️ Navbatni 1 martaga o'tkazib yuborish"),
+        BotCommand(command="qaytarish", description="↩️ Navbatchilikni asliga qaytarish"),
+        BotCommand(command="jadval", description="📅 To'liq navbatchilar jadvali"),
+        BotCommand(command="vazifalar", description="📋 Kunlik vazifalar ro'yxati"),
+        BotCommand(command="keyingi", description="👉 Navbatni keyingisiga surish"),
         BotCommand(command="kassa", description="💰 Kassa va oylik xarajatlar"),
         BotCommand(command="xarajat", description="💸 Yangi xarajat yozish"),
         BotCommand(command="ijara", description="🏠 Ijara holati va to'lovlar"),
         BotCommand(command="bozorlik", description="🛒 Bozorlik ro'yxati"),
-        BotCommand(command="navbatchi", description="Bugungi navbatchi va vazifalar"),
-        BotCommand(command="jadval", description="To'liq navbatchilar jadvali"),
-        BotCommand(command="vazifalar", description="Kunlik vazifalar ro'yxati"),
-        BotCommand(command="holat", description="[Admin] Kvartira sozlamalari"),
-        BotCommand(command="help", description="Qo'llanma va yordam"),
+        BotCommand(command="navbatchilar", description="⚙️ Navbatchilar ro'yxatini sozlash"),
+        BotCommand(command="vazifalar_sozlash", description="⚙️ Kunlik vazifalarni sozlash"),
+        BotCommand(command="holat", description="⚙️ Guruh holati va sozlamalari"),
+        BotCommand(command="help", description="📖 Qo'llanma va yordam"),
     ]
     await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
 
@@ -61,7 +66,8 @@ async def main():
     )
     dp = Dispatcher(storage=MemoryStorage())
 
-    # 3. Routerlarni ulash (tartib muhim: admin, finance, group, common)
+    # 3. Routerlarni ulash (tartib: duty_actions, admin, finance, group, common)
+    dp.include_router(duty_actions.router)
     dp.include_router(admin.router)
     dp.include_router(finance.router)
     dp.include_router(group.router)

@@ -23,7 +23,34 @@ async def init_db():
                 work_days TEXT DEFAULT '{DEFAULT_WORK_DAYS}',
                 current_index INTEGER DEFAULT 0,
                 is_active INTEGER DEFAULT 1,
-                last_notified_date TEXT DEFAULT ''
+                last_notified_date TEXT DEFAULT '',
+                temp_duty_member_id INTEGER DEFAULT NULL,
+                temp_duty_type TEXT DEFAULT NULL,
+                temp_duty_original_id INTEGER DEFAULT NULL
+            )
+        """)
+
+        # groups jadvaliga yangi ustunlarni xavfsiz qo'shish (migratsiya)
+        for col_name, col_type in [
+            ("temp_duty_member_id", "INTEGER DEFAULT NULL"),
+            ("temp_duty_type", "TEXT DEFAULT NULL"),
+            ("temp_duty_original_id", "INTEGER DEFAULT NULL")
+        ]:
+            try:
+                await conn.execute(f"ALTER TABLE groups ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
+
+        # Navbatchilikni almashtirish takliflari jadvali
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS duty_swap_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                from_member_id INTEGER NOT NULL,
+                to_member_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chat_id) REFERENCES groups (chat_id) ON DELETE CASCADE
             )
         """)
 
