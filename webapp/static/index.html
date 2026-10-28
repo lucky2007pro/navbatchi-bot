@@ -96,27 +96,41 @@
       <div id="tab-finance" class="tab-pane">
         <!-- Kassa Balansi Kartochkasi -->
         <div class="balance-card">
-          <span class="balance-label">Kassa Qoldig'i (Fond)</span>
+          <div class="balance-card-top">
+            <span class="balance-label">Kassa Qoldig'i (Fond)</span>
+            <button id="btn-open-reset-fund-modal" class="btn btn-sm btn-reset-fund" title="Kassa mablag'ini 0 qilish">
+              🔄 0 qilish
+            </button>
+          </div>
           <div class="balance-amount" id="fund-balance-display">0 so'm</div>
           <div class="balance-sub">
-            Bu oydagi jami xarajat: <b id="month-expense-display">0 so'm</b>
+            Bu oydagi jami chiqim: <b id="month-expense-display">0 so'm</b>
           </div>
-          <div class="balance-actions">
+          <div class="balance-actions-grid">
             <button id="btn-open-income-modal" class="btn btn-income">
-              ➕ Pul qo'shish (Kirim)
+              ➕ Mablag' kiritish
+            </button>
+            <button id="btn-open-withdrawal-modal" class="btn btn-withdraw">
+              💸 Mablag' chiqarish
             </button>
             <button id="btn-open-expense-modal" class="btn btn-expense">
-              ➖ Xarajat kiritish
+              🛒 Xarajat yozish
             </button>
           </div>
         </div>
 
-        <!-- So'nggi xarajatlar ro'yxati -->
+        <!-- Kassa amallari va xarajatlar tarixi -->
         <div class="tab-header" style="margin-top: 20px;">
-          <span class="section-title">Xarajatlar tarixi</span>
+          <span class="section-title">Kassa harakatlari tarixi</span>
+          <div class="history-filter-tabs">
+            <button class="filter-chip active" data-filter="all">Barchasi</button>
+            <button class="filter-chip" data-filter="income">📥 Kirim</button>
+            <button class="filter-chip" data-filter="withdraw">💸 Chiqim</button>
+            <button class="filter-chip" data-filter="expense">🛒 Xarajat</button>
+          </div>
         </div>
-        <div id="expenses-list" class="items-list">
-          <!-- Dinamik xarajatlar -->
+        <div id="transactions-list" class="items-list">
+          <!-- Dinamik kassa va xarajat amallari -->
         </div>
       </div>
 
@@ -283,7 +297,7 @@
   <div id="modal-income" class="modal-overlay hidden">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">Kassaga Pul Qo'shish (Kirim)</h3>
+        <h3 class="modal-title">📥 Kassaga Pul Qo'shish (Kirim)</h3>
         <button class="modal-close" onclick="closeModals()">✕</button>
       </div>
       <div class="modal-body">
@@ -293,11 +307,19 @@
         </div>
         <div class="form-group">
           <label>Summa (so'm) *</label>
-          <input type="number" id="input-income-amount" class="form-input" placeholder="Masalan: 100000" step="5000">
+          <input type="number" id="input-income-amount" class="form-input" placeholder="Masalan: 100000" step="1000">
+          <div class="quick-amounts-bar">
+            <span class="quick-amounts-label">Tezkor:</span>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-income-amount', 20000)">+20k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-income-amount', 50000)">+50k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-income-amount', 100000)">+100k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-income-amount', 200000)">+200k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-income-amount', 500000)">+500k</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Izoh (ixtiyoriy)</label>
-          <input type="text" id="input-income-note" class="form-input" placeholder="Masalan: Sentabr oylik fondi uchun">
+          <input type="text" id="input-income-note" class="form-input" placeholder="Masalan: Oylik fond uchun, Go'shtga">
         </div>
       </div>
       <div class="modal-footer">
@@ -307,11 +329,89 @@
     </div>
   </div>
 
+  <!-- MODAL: Kassadan pul chiqarish (Chiqim / Yechish) -->
+  <div id="modal-withdrawal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">💸 Kassadan Pul Chiqarish</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="current-fund-notice">
+          Hozirgi kassa qoldig'i: <b id="withdrawal-current-balance">0 so'm</b>
+        </div>
+        <div class="form-group">
+          <label>Kimga berildi / Kim yechdi? *</label>
+          <select id="select-withdrawal-member" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label>Chiqariladigan summa (so'm) *</label>
+          <input type="number" id="input-withdrawal-amount" class="form-input" placeholder="Masalan: 50000" step="1000">
+          <div class="quick-amounts-bar">
+            <span class="quick-amounts-label">Tezkor:</span>
+            <button type="button" class="quick-chip" onclick="setAmountToInput('input-withdrawal-amount', 20000)">20k</button>
+            <button type="button" class="quick-chip" onclick="setAmountToInput('input-withdrawal-amount', 50000)">50k</button>
+            <button type="button" class="quick-chip" onclick="setAmountToInput('input-withdrawal-amount', 100000)">100k</button>
+            <button type="button" class="quick-chip" onclick="setAllWithdrawalAmount()">Barchasi</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sabab / Izoh *</label>
+          <input type="text" id="input-withdrawal-note" class="form-input" placeholder="Masalan: Naqd pul olindi, ortiqcha pul qaytarildi">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-withdrawal" class="btn btn-danger">Mablag'ni chiqarish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Mablag'ni 0 qilish (Nollashtirish) -->
+  <div id="modal-reset-fund" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">🔄 Kassa Mablag'ini 0 Qilish</h3>
+        <button class="modal-close" onclick="closeModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="warning-box">
+          <div class="warning-title">⚠️ Diqqat!</div>
+          <div class="warning-text">
+            Kassadagi barcha qoldiq mablag' <b>0 so'm</b> qilib o'rnatiladi.
+          </div>
+        </div>
+        <div class="current-fund-notice" style="margin-top: 14px;">
+          Hozirgi qoldiq: <b id="reset-current-balance">0 so'm</b>
+        </div>
+        <div class="form-group" style="margin-top: 14px;">
+          <label>Nollashtirish usulini tanlang:</label>
+          <div class="radio-option">
+            <input type="radio" id="reset-mode-adjust" name="reset_fund_mode" value="adjust" checked>
+            <label for="reset-mode-adjust">Balansni 0 qilish (Tarixda nollash yozuvi saqlanadi)</label>
+          </div>
+          <div class="radio-option" style="margin-top: 8px;">
+            <input type="radio" id="reset-mode-clear" name="reset_fund_mode" value="clear">
+            <label for="reset-mode-clear">Barcha kassa amallari tarixini ham tozalash</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kim nollashtirmoqda? *</label>
+          <select id="select-reset-member" class="form-input"></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModals()">Bekor qilish</button>
+        <button id="btn-confirm-reset-fund" class="btn btn-danger">Ha, 0 qilinsin</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Xarajat kiritish (Chiqim) -->
   <div id="modal-expense" class="modal-overlay hidden">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">Yangi Xarajat Kiritish</h3>
+        <h3 class="modal-title">🛒 Yangi Xarajat Kiritish</h3>
         <button class="modal-close" onclick="closeModals()">✕</button>
       </div>
       <div class="modal-body">
@@ -322,6 +422,13 @@
         <div class="form-group">
           <label>Summa (so'm) *</label>
           <input type="number" id="input-expense-amount" class="form-input" placeholder="Masalan: 65000" step="1000">
+          <div class="quick-amounts-bar">
+            <span class="quick-amounts-label">Tezkor:</span>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-expense-amount', 15000)">+15k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-expense-amount', 30000)">+30k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-expense-amount', 50000)">+50k</button>
+            <button type="button" class="quick-chip" onclick="addAmountToInput('input-expense-amount', 100000)">+100k</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Kim xarid qildi? *</label>

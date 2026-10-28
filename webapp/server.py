@@ -257,6 +257,86 @@ async def handle_add_fund_income(request: web.Request) -> web.Response:
         "new_balance": new_balance
     })
 
+async def handle_add_fund_withdrawal(request: web.Request) -> web.Response:
+    """Kassadan pul yechish (Chiqim)."""
+    try:
+        data = await request.json()
+        chat_id = int(data.get("chat_id"))
+        member_name = str(data.get("member_name", "")).strip()
+        amount = int(data.get("amount", 0))
+        note = str(data.get("note", "")).strip()
+    except Exception:
+        return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
+
+    if not member_name or amount <= 0:
+        return web.json_response({"success": False, "error": "Kim olgani va to'g'ri summa kiritilishi shart"}, status=400)
+
+    current_balance = await finance_queries.get_fund_balance(chat_id)
+    if amount > current_balance:
+        # Kassada yetarli mablag' bo'lmasa ogohlantirish, lekin xonadoshlar kelishgan bo'lsa manfiyga ham o'tkazish mumkin
+        pass
+
+    await finance_queries.add_fund_withdrawal(chat_id, member_name, amount, note)
+    new_balance = await finance_queries.get_fund_balance(chat_id)
+    return web.json_response({
+        "success": True,
+        "message": f"💸 Kassadan {amount:,} so'm yechildi ({member_name})",
+        "new_balance": new_balance
+    })
+
+async def handle_reset_fund(request: web.Request) -> web.Response:
+    """Kassa mablag'ini 0 qilish (nollashtirish)."""
+    try:
+        data = await request.json()
+        chat_id = int(data.get("chat_id"))
+        clear_all = bool(data.get("clear_all", False))
+        reset_by = str(data.get("reset_by", "Xonadosh")).strip() or "Xonadosh"
+    except Exception:
+        return web.json_response({"success": False, "error": "Noto'g'ri so'rov"}, status=400)
+
+    old_balance = await finance_queries.reset_fund_balance(chat_id, clear_all=clear_all, reset_by=reset_by)
+    return web.json_response({
+        "success": True,
+        "message": f"🔄 Kassa mablag'i 0 qilindi! (Eski qoldiq: {old_balance:,} so'm)",
+        "new_balance": 0
+    })
+
+async def handle_delete_fund_transaction(request: web.Request) -> web.Response:
+    """Kassa tranzaksiyasini o'chirish."""
+    try:
+        data = await request.json()
+        chat_id = int(data.get("chat_id"))
+        tx_id = int(data.get("tx_id"))
+    except Exception:
+        return web.json_response({"success": False, "error": "Noto'g'ri so'rov"}, status=400)
+
+    success = await finance_queries.delete_fund_transaction(tx_id, chat_id)
+    new_balance = await finance_queries.get_fund_balance(chat_id)
+    return web.json_response({
+        "success": success,
+        "message": "Amal o'chirildi" if success else "Topilmadi",
+        "new_balance": new_balance
+    })
+
+async def handle_delete_expense(request: web.Request) -> web.Response:
+    """Xarajatni o'chirish."""
+    try:
+        data = await request.json()
+        chat_id = int(data.get("chat_id"))
+        expense_id = int(data.get("expense_id"))
+    except Exception:
+        return web.json_response({"success": False, "error": "Noto'g'ri so'rov"}, status=400)
+
+    success = await finance_queries.delete_expense(expense_id, chat_id)
+    new_balance = await finance_queries.get_fund_balance(chat_id)
+    month_expense = await finance_queries.get_month_expense_total(chat_id)
+    return web.json_response({
+        "success": success,
+        "message": "Xarajat o'chirildi" if success else "Topilmadi",
+        "new_balance": new_balance,
+        "month_expense": month_expense
+    })
+
 async def handle_add_expense(request: web.Request) -> web.Response:
     """Yangi xarajat kiritish."""
     try:
@@ -288,13 +368,14 @@ async def handle_update_rent_settings(request: web.Request) -> web.Response:
         chat_id = int(data.get("chat_id"))
         total_amount = int(data.get("total_amount", 0))
         due_day = int(data.get("due_day", 5))
+        notify_days = int(data.get("notify_days", 3))
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
 
     if not await check_admin_helper(request, chat_id):
         return web.json_response({"success": False, "error": "Faqat adminlar ijara sozlamalarini o'zgartira oladi"}, status=403)
 
-    await finance_queries.update_rent_settings(chat_id, total_amount, due_day)
+    await finance_queries.update_rent_settings(chat_id, total_amount, due_day, notify_days)
     return web.json_response({"success": True, "message": "Ijara sozlamalari yangilandi!"})
 
 async def handle_toggle_rent_payment(request: web.Request) -> web.Response:
@@ -365,6 +446,10 @@ def create_webapp_app(bot: Bot) -> web.Application:
     # API marshrutlari (Moliya, Ijara, Bozorlik)
     app.router.add_get("/api/finance-data", handle_get_finance_data)
     app.router.add_post("/api/add-fund-income", handle_add_fund_income)
+    app.router.add_post("/api/add-fund-withdrawal", handle_add_fund_withdrawal)
+    app.router.add_post("/api/reset-fund", handle_reset_fund)
+    app.router.add_post("/api/delete-fund-transaction", handle_delete_fund_transaction)
+    app.router.add_post("/api/delete-expense", handle_delete_expense)
     app.router.add_post("/api/add-expense", handle_add_expense)
     app.router.add_post("/api/update-rent-settings", handle_update_rent_settings)
     app.router.add_post("/api/toggle-rent-payment", handle_toggle_rent_payment)

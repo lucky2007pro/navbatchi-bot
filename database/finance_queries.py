@@ -27,6 +27,92 @@ async def add_fund_income(chat_id: int, member_name: str, amount: int, note: str
         """, (chat_id, member_name, amount, note, now))
         await conn.commit()
 
+async def add_fund_withdrawal(chat_id: int, member_name: str, amount: int, note: str = "") -> None:
+    """Kassadan pul chiqarish / yechish (Chiqim)."""
+    if amount <= 0:
+        return
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    async with get_db_connection() as conn:
+        await conn.execute("""
+            INSERT INTO fund_transactions (chat_id, member_name, amount, type, note, created_at)
+            VALUES (?, ?, ?, 'withdrawal', ?, ?)
+        """, (chat_id, member_name, -amount, note, now))
+        await conn.commit()
+
+async def reset_fund_balance(chat_id: int, clear_all: bool = False, reset_by: str = "Xonadosh") -> int:
+    """
+    Kassa mablag'ini 0 qilish (nollashtirish).
+    Agar clear_all=True bo'lsa, barcha tranzaksiyalar tozalanadi.
+    Aks holda balansni 0 qilish uchun nollash tranzaksiyasi kiritiladi.
+    Eski qoldiq summasini qaytaradi.
+    """
+    current_balance = await get_fund_balance(chat_id)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    async with get_db_connection() as conn:
+        if clear_all:
+            await conn.execute("DELETE FROM fund_transactions WHERE chat_id = ?", (chat_id,))
+        else:
+            if current_balance != 0:
+                await conn.execute("""
+                    INSERT INTO fund_transactions (chat_id, member_name, amount, type, note, created_at)
+                    VALUES (?, ?, ?, 'reset', ?, ?)
+                """, (chat_id, reset_by, -current_balance, f"Mablag' 0 qilindi (Eski qoldiq: {current_balance:,} so'm)", now))
+        await conn.commit()
+
+    return current_balance
+
+async def delete_fund_transaction(tx_id: int, chat_id: int) -> bool:
+    """Kassa tranzaksiyasini o'chirish."""
+    async with get_db_connection() as conn:
+        await conn.execute(
+            "UPDATE expenses SET fund_tx_id = NULL, payment_source = 'personal' WHERE fund_tx_id = ? AND chat_id = ?",
+            (tx_id, chat_id)
+        )
+        cursor = await conn.execute(
+            "DELETE FROM fund_transactions WHERE id = ? AND chat_id = ?",
+            (tx_id, chat_id)
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+
+async def delete_expense(expense_id: int, chat_id: int) -> bool:
+    """Xarajatni o'chirish va agar kassadan to'langan bo'lsa, unga bog'liq kassa chiqimini ham o'chirish."""
+    async with get_db_connection() as conn:
+        async with conn.execute(
+            "SELECT * FROM expenses WHERE id = ? AND chat_id = ?",
+            (expense_id, chat_id)
+        ) as cursor:
+            expense = await cursor.fetchone()
+
+        if not expense:
+            return False
+
+        fund_tx_id = expense["fund_tx_id"] if "fund_tx_id" in expense.keys() else None
+
+        if fund_tx_id:
+            await conn.execute(
+                "DELETE FROM fund_transactions WHERE id = ? AND chat_id = ?",
+                (fund_tx_id, chat_id)
+            )
+        elif expense["payment_source"] == "fund":
+            # Eski yozuvlar uchun: mos keluvchi kassa chiqimini topib o'chirish
+            await conn.execute("""
+                DELETE FROM fund_transactions 
+                WHERE id IN (
+                    SELECT id FROM fund_transactions 
+                    WHERE chat_id = ? AND type = 'expense' AND note = ? AND amount = ? 
+                    ORDER BY id DESC LIMIT 1
+                )
+            """, (chat_id, expense["title"], -expense["amount"]))
+
+        cursor_del = await conn.execute(
+            "DELETE FROM expenses WHERE id = ? AND chat_id = ?",
+            (expense_id, chat_id)
+        )
+        await conn.commit()
+        return cursor_del.rowcount > 0
+
 async def add_expense(
     chat_id: int,
     title: str,
@@ -34,29 +120,32 @@ async def add_expense(
     paid_by: str,
     payment_source: str = "fund",
     category: str = "Bozorlik"
-) -> None:
+) -> int:
     """
     Yangi xarajat kiritish.
     Agar payment_source == 'fund' bo'lsa, avtomatik ravishda kassadan chiqim qilinadi.
     """
     if amount <= 0:
-        return
+        return 0
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     async with get_db_connection() as conn:
-        # Xarajatlar jadvaliga yozish
-        await conn.execute("""
-            INSERT INTO expenses (chat_id, title, amount, paid_by, payment_source, category, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (chat_id, title, amount, paid_by, payment_source, category, now))
-
+        fund_tx_id = None
         # Agar kassadan to'langan bo'lsa, kassa harakatlariga manfiy summa yozamiz
         if payment_source == "fund":
-            await conn.execute("""
+            cursor_fund = await conn.execute("""
                 INSERT INTO fund_transactions (chat_id, member_name, amount, type, note, created_at)
                 VALUES (?, ?, ?, 'expense', ?, ?)
             """, (chat_id, paid_by, -amount, title, now))
+            fund_tx_id = cursor_fund.lastrowid
+
+        # Xarajatlar jadvaliga yozish
+        cursor_exp = await conn.execute("""
+            INSERT INTO expenses (chat_id, title, amount, paid_by, payment_source, category, fund_tx_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (chat_id, title, amount, paid_by, payment_source, category, fund_tx_id, now))
 
         await conn.commit()
+        return cursor_exp.lastrowid
 
 async def get_recent_expenses(chat_id: int, limit: int = 20) -> List[dict]:
     """Oxirgi xarajatlar ro'yxatini qaytaradi."""
@@ -110,16 +199,17 @@ async def get_rent_settings(chat_id: int) -> dict:
                 "notify_days": 3
             }
 
-async def update_rent_settings(chat_id: int, total_amount: int, due_day: int = 5) -> None:
+async def update_rent_settings(chat_id: int, total_amount: int, due_day: int = 5, notify_days: int = 3) -> None:
     """Guruh ijara sozlamalarini yangilaydi."""
     async with get_db_connection() as conn:
         await conn.execute("""
-            INSERT INTO rent_settings (chat_id, total_amount, currency, due_day)
-            VALUES (?, ?, 'UZS', ?)
+            INSERT INTO rent_settings (chat_id, total_amount, currency, due_day, notify_days)
+            VALUES (?, ?, 'UZS', ?, ?)
             ON CONFLICT(chat_id) DO UPDATE SET
                 total_amount = excluded.total_amount,
-                due_day = excluded.due_day
-        """, (chat_id, total_amount, due_day))
+                due_day = excluded.due_day,
+                notify_days = excluded.notify_days
+        """, (chat_id, total_amount, due_day, notify_days))
         await conn.commit()
 
 async def get_rent_status_for_month(chat_id: int, month_year: str = "") -> List[dict]:
@@ -168,8 +258,17 @@ async def get_rent_status_for_month(chat_id: int, month_year: str = "") -> List[
 
     return results
 
-async def toggle_rent_payment(chat_id: int, month_year: str, member_name: str, amount: int = 0) -> bool:
+async def toggle_rent_payment(chat_id: int, month_year: str = "", member_name: str = "", amount: int = 0) -> bool:
     """Xonadoshning joriy oy uchun ijara to'lov holatini teskarisiga o'zgartiradi."""
+    if not month_year:
+        month_year = datetime.now().strftime("%Y-%m")
+
+    if amount <= 0:
+        settings = await get_rent_settings(chat_id)
+        members = await get_members(chat_id)
+        total_rent = settings.get("total_amount", 0)
+        amount = total_rent // len(members) if members else 0
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     async with get_db_connection() as conn:
         async with conn.execute("""

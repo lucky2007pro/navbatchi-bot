@@ -99,10 +99,17 @@ async def init_db():
                 paid_by TEXT NOT NULL,
                 payment_source TEXT DEFAULT 'fund',
                 category TEXT DEFAULT 'Bozorlik',
+                fund_tx_id INTEGER DEFAULT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (chat_id) REFERENCES groups (chat_id) ON DELETE CASCADE
             )
         """)
+
+        # expenses jadvaliga fund_tx_id ustunini xavfsiz qo'shish (migratsiya)
+        try:
+            await conn.execute("ALTER TABLE expenses ADD COLUMN fund_tx_id INTEGER DEFAULT NULL")
+        except Exception:
+            pass
 
         # 3. Ijara sozlamalari
         await conn.execute("""

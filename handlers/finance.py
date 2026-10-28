@@ -36,7 +36,12 @@ async def cmd_kassa(message: types.Message):
         lines.append("<i>Hozircha xarajatlar kiritilmagan.</i>")
 
     lines.append("")
-    lines.append("💡 <i>Tezkor xarajat yozish: /xarajat 45000 Go'sht</i>")
+    lines.append(
+        "💡 <i>Tezkor buyruqlar:</i>\n"
+        "📥 <code>/kirim 50000 Oylik fond</code> — Kassaga pul qo'shish\n"
+        "🛒 <code>/xarajat 45000 Go'sht</code> — Xarajat yozish\n"
+        "💸 <code>/chiqim 30000 Usta uchun</code> — Kassadan pul yechish"
+    )
 
     await message.answer(
         "\n".join(lines),
@@ -46,7 +51,7 @@ async def cmd_kassa(message: types.Message):
 
 @router.message(Command("xarajat"))
 async def cmd_xarajat(message: types.Message):
-    """Tezkor xarajat yozish: /xarajat <summa> <nomi>"""
+    """Tezkor xarajat yozish: /xarajat <summa> <nomi> yoki /xarajat <nomi> <summa>"""
     chat_id = message.chat.id
     args = message.text.partition(" ")[2].strip()
 
@@ -54,24 +59,49 @@ async def cmd_xarajat(message: types.Message):
         await message.reply(
             "✍️ <b>Xarajat kiritish namunasi:</b>\n"
             "<code>/xarajat 50000 Go'sht va sabzi</code>\n"
-            "<code>/xarajat 15000 Non va tuxum</code>\n\n"
+            "<code>/xarajat Non va sut 15000</code>\n\n"
             "Yoki to'liq Web App orqali boshqaring:",
             reply_markup=get_webapp_keyboard(chat_id),
             parse_mode="HTML"
         )
         return
 
-    parts = args.split(" ", 1)
-    try:
-        amount = int(parts[0].replace(",", "").replace(".", "").replace(" ", ""))
-        title = parts[1].strip() if len(parts) > 1 else "Noma'lum xarid"
-    except ValueError:
-        await message.reply("⚠️ Summa noto'g'ri kiritildi. Masalan: <code>/xarajat 50000 Go'sht</code>", parse_mode="HTML")
+    words = args.split()
+    amount = 0
+    title = ""
+
+    # 1-variant: Birinchi so'z summa (masalan: 50000 Go'sht)
+    clean_first = words[0].replace(",", "").replace(".", "").replace(" ", "").replace("_", "")
+    if clean_first.isdigit():
+        try:
+            amount = int(clean_first)
+            title = " ".join(words[1:]).strip() if len(words) > 1 else "Bozorlik"
+        except ValueError:
+            pass
+
+    # 2-variant: Agar birinchi so'z summa bo'lmasa, oxirgi so'zni tekshiramiz (masalan: Go'sht 50000)
+    if amount <= 0 and len(words) > 1:
+        clean_last = words[-1].replace(",", "").replace(".", "").replace(" ", "").replace("_", "")
+        if clean_last.isdigit():
+            try:
+                amount = int(clean_last)
+                title = " ".join(words[:-1]).strip()
+            except ValueError:
+                pass
+
+    if amount <= 0:
+        await message.reply(
+            "⚠️ <b>Summa noto'g'ri kiritildi!</b>\n"
+            "Masalan: <code>/xarajat 50000 Go'sht</code> yoki <code>/xarajat Go'sht 50000</code>",
+            parse_mode="HTML"
+        )
         return
+
+    if not title:
+        title = "Bozorlik"
 
     paid_by = message.from_user.full_name or message.from_user.first_name or "Xonadosh"
 
-    # Xarajatni kassadan to'langan deb bazaga yozamiz
     await finance_queries.add_expense(
         chat_id=chat_id,
         title=title,
@@ -90,6 +120,118 @@ async def cmd_xarajat(message: types.Message):
         f"👤 <b>Kiritdi:</b> {paid_by}\n\n"
         f"💰 <b>Kassada qoldi:</b> {new_balance:,} so'm"
     )
+
+    await message.answer(
+        text,
+        reply_markup=get_webapp_keyboard(chat_id),
+        parse_mode="HTML"
+    )
+
+@router.message(Command("kirim", "kassa_kirim"))
+async def cmd_kirim(message: types.Message):
+    """Kassaga pul qo'shish: /kirim <summa> [izoh]"""
+    chat_id = message.chat.id
+    args = message.text.partition(" ")[2].strip()
+
+    if not args:
+        await message.reply(
+            "✍️ <b>Kassaga pul qo'shish namunasi:</b>\n"
+            "<code>/kirim 100000 Oylik fond</code>\n"
+            "<code>/kirim 50000</code>\n\n"
+            "Yoki to'liq Web App orqali boshqaring:",
+            reply_markup=get_webapp_keyboard(chat_id),
+            parse_mode="HTML"
+        )
+        return
+
+    words = args.split()
+    amount = 0
+    note = ""
+
+    clean_first = words[0].replace(",", "").replace(".", "").replace(" ", "").replace("_", "")
+    if clean_first.isdigit():
+        try:
+            amount = int(clean_first)
+            note = " ".join(words[1:]).strip()
+        except ValueError:
+            pass
+
+    if amount <= 0:
+        await message.reply(
+            "⚠️ <b>Summa noto'g'ri kiritildi!</b>\n"
+            "Masalan: <code>/kirim 100000 Oylik fond</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    member_name = message.from_user.full_name or message.from_user.first_name or "Xonadosh"
+    await finance_queries.add_fund_income(chat_id, member_name, amount, note or "Kassa to'ldirildi")
+    new_balance = await finance_queries.get_fund_balance(chat_id)
+
+    text = (
+        f"📥 <b>Kassaga mablag' qo'shildi!</b>\n\n"
+        f"👤 <b>Kimdan:</b> {member_name}\n"
+        f"💵 <b>Summa:</b> +{amount:,} so'm\n"
+    )
+    if note:
+        text += f"📝 <b>Izoh:</b> {note}\n"
+    text += f"\n💰 <b>Yangi kassa qoldig'i:</b> {new_balance:,} so'm"
+
+    await message.answer(
+        text,
+        reply_markup=get_webapp_keyboard(chat_id),
+        parse_mode="HTML"
+    )
+
+@router.message(Command("chiqim", "kassa_chiqim"))
+async def cmd_chiqim(message: types.Message):
+    """Kassadan pul yechish: /chiqim <summa> [izoh]"""
+    chat_id = message.chat.id
+    args = message.text.partition(" ")[2].strip()
+
+    if not args:
+        await message.reply(
+            "✍️ <b>Kassadan pul yechish namunasi:</b>\n"
+            "<code>/chiqim 70000 Gilam yuvish uchun</code>\n"
+            "<code>/chiqim 30000</code>\n\n"
+            "Yoki to'liq Web App orqali boshqaring:",
+            reply_markup=get_webapp_keyboard(chat_id),
+            parse_mode="HTML"
+        )
+        return
+
+    words = args.split()
+    amount = 0
+    note = ""
+
+    clean_first = words[0].replace(",", "").replace(".", "").replace(" ", "").replace("_", "")
+    if clean_first.isdigit():
+        try:
+            amount = int(clean_first)
+            note = " ".join(words[1:]).strip()
+        except ValueError:
+            pass
+
+    if amount <= 0:
+        await message.reply(
+            "⚠️ <b>Summa noto'g'ri kiritildi!</b>\n"
+            "Masalan: <code>/chiqim 70000 Usta uchun</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    member_name = message.from_user.full_name or message.from_user.first_name or "Xonadosh"
+    await finance_queries.add_fund_withdrawal(chat_id, member_name, amount, note or "Kassadan yechildi")
+    new_balance = await finance_queries.get_fund_balance(chat_id)
+
+    text = (
+        f"💸 <b>Kassadan pul yechildi!</b>\n\n"
+        f"👤 <b>Kim oldi:</b> {member_name}\n"
+        f"💵 <b>Summa:</b> -{amount:,} so'm\n"
+    )
+    if note:
+        text += f"📝 <b>Izoh:</b> {note}\n"
+    text += f"\n💰 <b>Kassada qoldi:</b> {new_balance:,} so'm"
 
     await message.answer(
         text,
