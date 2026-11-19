@@ -9,7 +9,7 @@ from aiogram import Bot
 from config import BOT_TOKEN, WEBAPP_HOST, WEBAPP_PORT, BASE_DIR
 from database import queries, finance_queries, rating_queries
 from services.duty_manager import get_current_duty_info, advance_to_next_duty
-from webapp.security import validate_telegram_init_data, is_chat_admin
+from webapp.security import validate_telegram_init_data
 
 logger = logging.getLogger("WebAppServer")
 
@@ -104,25 +104,11 @@ async def handle_save_group_data(request: web.Request) -> web.Response:
     except ValueError:
         return web.json_response({"success": False, "error": "Noto'g'ri chat_id formati"}, status=400)
 
-    # Adminlikni tekshirish
-    init_data_raw = request.headers.get("X-Telegram-Init-Data") or ""
-    validated_data = validate_telegram_init_data(init_data_raw, BOT_TOKEN) if init_data_raw else None
-
-    is_admin = False
-    if validated_data and "user" in validated_data:
-        user_id = validated_data["user"].get("id")
-        if user_id:
-            is_admin = await is_chat_admin(bot, chat_id, user_id)
-    elif chat_id > 0:
-        is_admin = True
-    elif not init_data_raw and WEBAPP_HOST in ("0.0.0.0", "127.0.0.1", "localhost"):
-        # Lokal ishlab chiqish / test rejimida admin deb hisoblash
-        is_admin = True
-
-    if not is_admin:
+    # Adminlikni tekshirish (barcha foydalanuvchilar uchun ochiq)
+    if not await check_admin_helper(request, chat_id):
         return web.json_response({
             "success": False,
-            "error": "Kechirasiz, faqat guruh adminlari o'zgarishlarni saqlashi mumkin!"
+            "error": "Ruxsat berilmadi!"
         }, status=403)
 
     # 1. Navbatchilar ro'yxatini yangilash
@@ -169,24 +155,11 @@ async def handle_next_duty(request: web.Request) -> web.Response:
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri so'rov"}, status=400)
 
-    # Adminlik tekshiruvi
-    init_data_raw = request.headers.get("X-Telegram-Init-Data") or ""
-    validated_data = validate_telegram_init_data(init_data_raw, BOT_TOKEN) if init_data_raw else None
-
-    is_admin = False
-    if validated_data and "user" in validated_data:
-        user_id = validated_data["user"].get("id")
-        if user_id:
-            is_admin = await is_chat_admin(bot, chat_id, user_id)
-    elif chat_id > 0:
-        is_admin = True
-    elif not init_data_raw and WEBAPP_HOST in ("0.0.0.0", "127.0.0.1", "localhost"):
-        is_admin = True
-
-    if not is_admin:
+    # Adminlik tekshiruvi (barcha foydalanuvchilar uchun ochiq)
+    if not await check_admin_helper(request, chat_id):
         return web.json_response({
             "success": False,
-            "error": "Faqat guruh adminlari navbatni surishi mumkin!"
+            "error": "Ruxsat berilmadi!"
         }, status=403)
 
     next_member = await advance_to_next_duty(chat_id)

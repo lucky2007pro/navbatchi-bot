@@ -40,6 +40,7 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="ijara", description="🏠 Ijara holati va to'lovlar"),
         BotCommand(command="bozorlik", description="🛒 Bozorlik ro'yxati"),
         BotCommand(command="navbatchilar", description="⚙️ Navbatchilar ro'yxatini sozlash"),
+        BotCommand(command="qayta_tuzish", description="♻️ Navbatchilik jadvalini qayta tuzish"),
         BotCommand(command="vazifalar_sozlash", description="⚙️ Kunlik vazifalarni sozlash"),
         BotCommand(command="holat", description="⚙️ Guruh holati va sozlamalari"),
         BotCommand(command="help", description="📖 Qo'llanma va yordam"),

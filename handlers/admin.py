@@ -1,3 +1,4 @@
+import random
 import re
 from aiogram import Router, types, F
 from aiogram.filters import Command
@@ -363,3 +364,115 @@ async def callback_clear(call: CallbackQuery):
     else:
         await call.answer("Bekor qilindi.")
         await call.message.edit_text("❌ Tozalash bekor qilindi.")
+
+
+# ==================== JADVALNI QAYTA TUZISH (/qayta_tuzish) ====================
+
+def _format_schedule_list(members: list) -> str:
+    lines = []
+    for idx, mem in enumerate(members, start=1):
+        username_str = f" (@{mem['username']})" if mem.get("username") else ""
+        lines.append(f"{idx}. {mem['name']}{username_str}")
+    return "\n".join(lines)
+
+
+@router.message(Command("qayta_tuzish"))
+async def cmd_qayta_tuzish(message: types.Message):
+    """Navbatchilik jadvalini qayta tuzish menyusi."""
+    if not await is_admin(message.bot, message.chat.id, message.from_user.id, message.chat.type):
+        await message.reply("⛔ <b>Kechirasiz, bu buyruq faqat guruh adminlari uchun!</b>", parse_mode="HTML")
+        return
+
+    await queries.register_or_update_group(message.chat.id, message.chat.title or "Nomsiz")
+    members = await queries.get_members(message.chat.id)
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔀 Tasodifiy aralashtirish", callback_data="rebuild_shuffle")],
+        [InlineKeyboardButton(text="⏮️ 1-o'rindan boshlash", callback_data="rebuild_reset")],
+        [InlineKeyboardButton(text="🔁 Tartibni teskari qilish", callback_data="rebuild_reverse")],
+        [InlineKeyboardButton(text="✍️ Yangi ro'yxat kiritish", callback_data="rebuild_new")],
+        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data="rebuild_cancel")],
+    ])
+
+    if members:
+        text = (
+            "♻️ <b>NAVBATCHILIK JADVALINI QAYTA TUZISH</b>\n\n"
+            f"📋 <b>Hozirgi tartib ({len(members)} nafar):</b>\n"
+            f"{_format_schedule_list(members)}\n\n"
+            "Qanday qayta tuzmoqchisiz?"
+        )
+    else:
+        text = (
+            "♻️ <b>NAVBATCHILIK JADVALINI QAYTA TUZISH</b>\n\n"
+            "⚠️ Hozircha navbatchilar ro'yxati bo'sh.\n"
+            "Yangi ro'yxat kiritish uchun quyidagi tugmani bosing:"
+        )
+
+    await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("rebuild_"))
+async def callback_rebuild_schedule(call: CallbackQuery, state: FSMContext):
+    if not await is_admin(call.bot, call.message.chat.id, call.from_user.id, call.message.chat.type):
+        await call.answer("⛔ Ruxsat berilmadi!", show_alert=True)
+        return
+
+    chat_id = call.message.chat.id
+    action = call.data.replace("rebuild_", "")
+
+    if action == "cancel":
+        await call.answer("Bekor qilindi.")
+        await call.message.edit_text("❌ Jadvalni qayta tuzish bekor qilindi.")
+        return
+
+    if action == "new":
+        await state.set_state(AdminStates.waiting_for_members)
+        await state.update_data(target_chat_id=chat_id)
+        await call.answer()
+        await call.message.edit_text(
+            "✍️ <b>Yangi navbatchilar ro'yxatini yuboring:</b>\n\n"
+            "Har bir a'zoni yangi qatordan tartib bilan yozing.\n"
+            "<i>Namuna:</i>\n"
+            "<code>1. @hojiakbar (Hojiakbar)</code>\n"
+            "<code>2. @nodir (Nodir)</code>\n"
+            "<code>3. Jasur</code>\n\n"
+            "Bekor qilish uchun /cancel deb yozing.",
+            parse_mode="HTML"
+        )
+        return
+
+    members = await queries.get_members(chat_id)
+    if not members:
+        await call.answer("⚠️ Navbatchilar ro'yxati bo'sh!", show_alert=True)
+        return
+
+    if action == "shuffle":
+        reordered = [{"name": m["name"], "username": m.get("username", "")} for m in members]
+        random.shuffle(reordered)
+        await queries.set_members(chat_id, reordered)
+        await queries.clear_temp_duty(chat_id)
+        title = "🔀 <b>Jadval tasodifiy aralashtirildi!</b>"
+        updated = reordered
+    elif action == "reverse":
+        reordered = [{"name": m["name"], "username": m.get("username", "")} for m in reversed(members)]
+        await queries.set_members(chat_id, reordered)
+        await queries.clear_temp_duty(chat_id)
+        title = "🔁 <b>Jadval tartibi teskari qilindi!</b>"
+        updated = reordered
+    elif action == "reset":
+        await queries.update_group_index(chat_id, 0)
+        await queries.clear_temp_duty(chat_id)
+        title = "⏮️ <b>Navbat 1-o'rindan boshlandi!</b>"
+        updated = members
+    else:
+        await call.answer("Noma'lum amal.")
+        return
+
+    await call.answer("Jadval yangilandi!")
+    await call.message.edit_text(
+        f"{title}\n\n"
+        f"📋 <b>Yangi navbatchilik jadvali:</b>\n"
+        f"{_format_schedule_list(updated)}\n\n"
+        f"👉 Navbat 1-a'zodan boshlanadi. Ko'rish: /navbatchi",
+        parse_mode="HTML"
+    )
