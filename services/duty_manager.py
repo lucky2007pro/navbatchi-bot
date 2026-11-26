@@ -1,6 +1,12 @@
+import html
 import re
 from typing import List, Dict, Optional, Tuple
 from database import queries
+
+
+def _esc(val) -> str:
+    return html.escape(str(val or ""), quote=False)
+
 
 def parse_members_text(text: str) -> List[Dict[str, str]]:
     """
@@ -10,8 +16,18 @@ def parse_members_text(text: str) -> List[Dict[str, str]]:
       2. Nodirbek (@nodir)
       3. @jasur
       4. Sardor
+      5. Ali, Vali, G'ani (bir qatorda vergul bilan yozilsa ham)
     """
-    lines = text.strip().split("\n")
+    if not text or not text.strip():
+        return []
+
+    raw_lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
+    # Agar faqat bitta qator bo'lsa va vergul bilan ajratilgan bo'lsa (masalan: "Ali, Vali, Sardor")
+    if len(raw_lines) == 1 and "," in raw_lines[0]:
+        lines = [part.strip() for part in raw_lines[0].split(",") if part.strip()]
+    else:
+        lines = raw_lines
+
     members = []
 
     for line in lines:
@@ -19,20 +35,21 @@ def parse_members_text(text: str) -> List[Dict[str, str]]:
         if not line:
             continue
 
-        # Boshidagi tartib raqamlarini tozalash (masalan "1.", "1)", "1 -", "-")
-        cleaned = re.sub(r"^\s*(\d+[\.\)\-]?|\-|\*)\s*", "", line).strip()
+        # Boshidagi tartib raqamlari va belgilarni tozalash (masalan "1.", "1)", "1 -", "-", "•")
+        cleaned = re.sub(r"^\s*(?:\d+\s*[\.\)\-:]?|\-|\*|•)\s*", "", line).strip()
         if not cleaned:
             continue
 
-        # Username qidirish (@username)
-        username_match = re.search(r"@([a-zA-Z0-9_]{4,32})", cleaned)
+        # Username qidirish (@username — kamida 3 ta belgi)
+        username_match = re.search(r"@([a-zA-Z0-9_]{3,32})", cleaned)
         username = username_match.group(1) if username_match else ""
 
         # Qolgan matndan ismni ajratish
-        name_candidate = re.sub(r"@([a-zA-Z0-9_]{4,32})", "", cleaned)
-        # Qavslar, chiziqchalar va bo'sh joylarni tozalash
-        name = re.sub(r"[\(\)\[\]\-—]", " ", name_candidate).strip()
-        name = re.sub(r"\s+", " ", name)
+        name_candidate = re.sub(r"@([a-zA-Z0-9_]{3,32})", "", cleaned)
+        # Qavslar va ajratuvchi tirelarni (" - ", " — ") tozalash (Mirzo-Ulug'bek kabi ismlarni buzmasdan)
+        name = re.sub(r"[\(\)\[\]]", " ", name_candidate)
+        name = re.sub(r"(?:^\s*[\-—]+\s*|\s+[\-—]+\s+|\s*[\-—]+\s*$)", " ", name)
+        name = re.sub(r"\s+", " ", name).strip()
 
         # Agar ism qolmasa, username ning o'zini ism sifatida ishlatamiz
         if not name and username:
@@ -47,11 +64,20 @@ def parse_members_text(text: str) -> List[Dict[str, str]]:
 
     return members
 
+
 def parse_tasks_text(text: str) -> List[str]:
     """
     Foydalanuvchi kiritgan matndan vazifalar ro'yxatini ajratib oladi.
     """
-    lines = text.strip().split("\n")
+    if not text or not text.strip():
+        return []
+
+    raw_lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
+    if len(raw_lines) == 1 and "," in raw_lines[0]:
+        lines = [part.strip() for part in raw_lines[0].split(",") if part.strip()]
+    else:
+        lines = raw_lines
+
     tasks = []
 
     for line in lines:
@@ -60,26 +86,28 @@ def parse_tasks_text(text: str) -> List[str]:
             continue
 
         # Boshidagi tartib raqamlarini tozalash
-        cleaned = re.sub(r"^\s*(\d+[\.\)\-]?|\-|\*)\s*", "", line).strip()
+        cleaned = re.sub(r"^\s*(?:\d+\s*[\.\)\-:]?|\-|\*|•)\s*", "", line).strip()
         if cleaned:
             tasks.append(cleaned)
 
     return tasks
+
 
 async def get_current_duty_info(chat_id: int) -> Tuple[Optional[dict], List[dict], int]:
     """
     Guruhdagi ayni damdagi navbatchi, barcha a'zolar va hozirgi indeksni qaytaradi.
     Agar vaqtinchalik (swap yoki skip) navbatchi tayinlangan bo'lsa, uni ko'rsatadi.
     """
-    group = await queries.get_group(chat_id)
-    if not group:
-        return None, [], 0
-
     members = await queries.get_members(chat_id)
     if not members:
         return None, [], 0
 
-    current_index = group.get("current_index", 0) % len(members)
+    group = await queries.get_group(chat_id)
+    if not group:
+        await queries.register_or_update_group(chat_id, "Smart Kvartira")
+        group = await queries.get_group(chat_id) or {"current_index": 0}
+
+    current_index = (group.get("current_index") or 0) % len(members)
     original_member = members[current_index]
 
     temp_duty_id = group.get("temp_duty_member_id")
@@ -91,10 +119,31 @@ async def get_current_duty_info(chat_id: int) -> Tuple[Optional[dict], List[dict
             current_member["temp_duty_type"] = group.get("temp_duty_type", "swap")
             current_member["original_member"] = original_member
             return current_member, members, current_index
+        else:
+            # Eskirgan temp_duty_member_id bo'lsa tozalab yuboramiz
+            await queries.clear_temp_duty(chat_id)
 
     current_member = dict(original_member)
     current_member["is_temporary"] = False
     return current_member, members, current_index
+
+
+def format_member_html(member: dict, bold: bool = True) -> str:
+    """
+    A'zoni HTML formatida xavfsiz ko'rsatish (username bo'lsa @mention, bo'lmasa faqat ismi).
+    """
+    raw_name = str(member.get("name") or "Noma'lum").strip()
+    raw_username = str(member.get("username") or "").replace("@", "").strip()
+    safe_name = _esc(raw_name)
+    safe_username = _esc(raw_username)
+
+    if safe_username:
+        mention = f"@{safe_username}"
+        if raw_name and raw_name != f"@{raw_username}":
+            return f"<b>{mention}</b> ({safe_name})" if bold else f"{mention} ({safe_name})"
+        return f"<b>{mention}</b>" if bold else mention
+    return f"<b>{safe_name}</b>" if bold else safe_name
+
 
 async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_summary: Optional[dict] = None) -> Optional[str]:
     """
@@ -106,21 +155,16 @@ async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_su
 
     tasks = await queries.get_tasks(chat_id)
 
-    # Navbatchini belgilash (agar username bo'lsa tag qilamiz)
-    if current_member.get("username"):
-        duty_mention = f"@{current_member['username']}"
-        if current_member.get("name") and current_member['name'] != f"@{current_member['username']}":
-            duty_tag = f"<b>{duty_mention}</b> ({current_member['name']})"
-        else:
-            duty_tag = f"<b>{duty_mention}</b>"
-    else:
-        duty_tag = f"<b>{current_member['name']}</b>"
+    # Navbatchini belgilash (agar username bo'lsa tag qilamiz, bo'lmasa faqat ismini chiqaramiz)
+    duty_tag = format_member_html(current_member, bold=True)
 
     # Vaqtinchalik holat izohi (Swap yoki Skip)
     temp_note = ""
     if current_member.get("is_temporary"):
         orig = current_member.get("original_member", {})
-        orig_tag = f"@{orig['username']}" if orig.get("username") else orig.get("name", "Asl navbatchi")
+        orig_raw_user = str(orig.get("username") or "").replace("@", "").strip()
+        orig_raw_name = str(orig.get("name") or "Asl navbatchi").strip()
+        orig_tag = f"@{_esc(orig_raw_user)}" if orig_raw_user else _esc(orig_raw_name)
         if current_member.get("temp_duty_type") == "swap":
             temp_note = f"\n🔄 <i>(Navbat <b>{orig_tag}</b> bilan 1 martaga almashildi. Keyingi navbatda joyiga qaytadi)</i>"
         elif current_member.get("temp_duty_type") == "skip":
@@ -131,15 +175,16 @@ async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_su
     if len(members) > 1:
         if current_member.get("is_temporary") and current_member.get("temp_duty_type") == "skip":
             orig = current_member.get("original_member", {})
-            next_tag = f"@{orig['username']}" if orig.get("username") else orig.get("name", "")
+            orig_raw_user = str(orig.get("username") or "").replace("@", "").strip()
+            orig_raw_name = str(orig.get("name") or "").strip()
+            next_tag = f"@{_esc(orig_raw_user)}" if orig_raw_user else _esc(orig_raw_name)
             next_member_text = f"\n<i>(Keyingi navbat o'z joyiga qaytadi: {next_tag})</i>"
         else:
             next_index = (current_index + 1) % len(members)
             next_mem = members[next_index]
-            if next_mem.get("username"):
-                next_tag = f"@{next_mem['username']}"
-            else:
-                next_tag = next_mem['name']
+            next_raw_user = str(next_mem.get("username") or "").replace("@", "").strip()
+            next_raw_name = str(next_mem.get("name") or "").strip()
+            next_tag = f"@{_esc(next_raw_user)}" if next_raw_user else _esc(next_raw_name)
             next_member_text = f"\n<i>(Ertangi navbatchi: {next_tag})</i>"
 
     # Sarlavha
@@ -157,7 +202,7 @@ async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_su
 
     # Oldingi navbatchilik bahosi natijasi (agar mavjud bo'lsa)
     if rating_summary:
-        prev_name = rating_summary.get("member_name", "")
+        prev_name = _esc(rating_summary.get("member_name"))
         likes = rating_summary.get("likes_count", 0)
         dislikes = rating_summary.get("dislikes_count", 0)
         total = likes + dislikes
@@ -179,7 +224,8 @@ async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_su
     if tasks:
         lines.append("📋 <b>Bugungi vazifalar:</b>")
         for idx, t in enumerate(tasks, start=1):
-            lines.append(f"  <b>{idx}.</b> {t['task_text']}")
+            safe_task = _esc(t.get("task_text"))
+            lines.append(f"  <b>{idx}.</b> {safe_task}")
     else:
         lines.append("📋 <b>Bugungi vazifalar:</b> Belgilanmagan (/vazifalar_sozlash orqali qo'shishingiz mumkin)")
 
@@ -188,22 +234,24 @@ async def build_duty_message(chat_id: int, is_automatic: bool = False, rating_su
 
     return "\n".join(lines)
 
+
 async def advance_to_next_duty(chat_id: int, notify_date: Optional[str] = None) -> Optional[dict]:
     """
     Navbatni keyingi a'zoga siljitadi va yangi navbatchini qaytaradi.
     Agar vaqtinchalik bir martalik o'tkazib yuborish (skip) yoki almashtirish (swap)
     bo'lgan bo'lsa, bir martadan keyin o'z joyiga qaytaradi.
     """
-    group = await queries.get_group(chat_id)
-    if not group:
-        return None
-
     members = await queries.get_members(chat_id)
     if not members:
         return None
 
+    group = await queries.get_group(chat_id)
+    if not group:
+        await queries.register_or_update_group(chat_id, "Smart Kvartira")
+        group = await queries.get_group(chat_id) or {"current_index": 0}
+
     temp_duty_type = group.get("temp_duty_type")
-    current_index = group.get("current_index", 0)
+    current_index = group.get("current_index") or 0
 
     # 1. Skip bo'lgan bo'lsa: bir marta o'tkazib yuborildi, keyingi navbatchilikda joyiga qaytadi
     if temp_duty_type == "skip":

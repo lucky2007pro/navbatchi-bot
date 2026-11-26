@@ -48,7 +48,8 @@ async def setup_bot_commands(bot: Bot):
     await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
 
     # Pastki chap burchakdagi doimiy Web App menyu tugmasini o'rnatish
-    if WEBAPP_URL and WEBAPP_URL.startswith("https://"):
+    from handlers.common import is_valid_webapp_url
+    if is_valid_webapp_url(WEBAPP_URL):
         try:
             await bot.set_chat_menu_button(
                 menu_button=MenuButtonWebApp(

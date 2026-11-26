@@ -494,15 +494,16 @@ function renderRent() {
       <div class="item-left">
         <div class="item-info">
           <div class="item-title">${escapeHtml(m.member_name)}</div>
-          <div class="item-subtitle">${Number(m.amount).toLocaleString()} so'm ${m.paid_at ? `(${m.paid_at})` : ""}</div>
+          <div class="item-subtitle">${Number(m.amount).toLocaleString()} so'm ${m.paid_at ? `(${escapeHtml(m.paid_at)})` : ""}</div>
         </div>
       </div>
-      <div>
-        <button class="${btnClass}" onclick="toggleRent('${escapeHtml(m.member_name)}', ${m.amount})">
-          ${btnText}
-        </button>
-      </div>
+      <div class="rent-action-slot"></div>
     `;
+    const btn = document.createElement("button");
+    btn.className = btnClass;
+    btn.textContent = btnText;
+    btn.addEventListener("click", () => toggleRent(m.member_name, m.amount));
+    item.querySelector(".rent-action-slot").appendChild(btn);
     listEl.appendChild(item);
   });
 }
@@ -564,7 +565,9 @@ function populateMemberSelects() {
   if (resetSelect) resetSelect.innerHTML = "";
   if (expenseSelect) expenseSelect.innerHTML = `<option value="Kassa">💰 Umumiy Kassa</option>`;
 
-  appState.members.forEach((m) => {
+  const sourceMembers = appState.members.length > 0 ? appState.members : [{ name: "Xonadosh" }];
+
+  sourceMembers.forEach((m) => {
     const createOption = () => {
       const opt = document.createElement("option");
       opt.value = m.name;
@@ -1010,8 +1013,46 @@ document.getElementById("btn-clear-bought").addEventListener("click", async () =
   }
 });
 
-// 6. Navbatchilik boshqaruvi
-window.moveMember = function (index, direction) {
+// 6. Navbatchilik boshqaruvi va darhol saqlash yordamchisi
+async function persistGroupData(toastMessage = "✅ Saqlandi!") {
+  if (!appState.isAdmin) return;
+  const notifyTime = document.getElementById("setting-notify-time")?.value || appState.group?.notify_time || "08:00";
+  const selectedRadio = document.querySelector('input[name="work_days"]:checked');
+  const workDays = selectedRadio ? selectedRadio.value : (appState.group?.work_days || "workdays_sat");
+  const activeEl = document.getElementById("setting-is-active");
+  const isActive = activeEl ? (activeEl.checked ? 1 : 0) : (appState.group?.is_active ?? 1);
+
+  const payload = {
+    chat_id: appState.chatId,
+    members: appState.members,
+    tasks: appState.tasks,
+    settings: {
+      notify_time: notifyTime,
+      work_days: workDays,
+      is_active: isActive,
+    },
+  };
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (tg?.initData) headers["X-Telegram-Init-Data"] = tg.initData;
+
+    const res = await fetch("/api/save-group-data", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "Saqlashda xatolik");
+
+    if (toastMessage) showToast(toastMessage, "success");
+    await loadAllData();
+  } catch (err) {
+    showToast(`❌ ${err.message}`, "error");
+  }
+}
+
+window.moveMember = async function (index, direction) {
   triggerHaptic("selection");
   const newIndex = index + direction;
   if (newIndex < 0 || newIndex >= appState.members.length) return;
@@ -1020,19 +1061,22 @@ window.moveMember = function (index, direction) {
   appState.members[index] = appState.members[newIndex];
   appState.members[newIndex] = temp;
   renderMembers();
+  await persistGroupData("✅ Tartib saqlandi!");
 };
 
-window.deleteMember = function (index) {
+window.deleteMember = async function (index) {
   triggerHaptic("warning");
   if (!confirm("Ushbu a'zoni o'chirmoqchimisiz?")) return;
   appState.members.splice(index, 1);
   renderMembers();
+  await persistGroupData("✅ A'zo o'chirildi!");
 };
 
-window.deleteTask = function (index) {
+window.deleteTask = async function (index) {
   triggerHaptic("warning");
   appState.tasks.splice(index, 1);
   renderTasks();
+  await persistGroupData("✅ Vazifa o'chirildi!");
 };
 
 const handleNextDutyAdvance = async () => {
@@ -1073,7 +1117,7 @@ document.getElementById("btn-add-task").addEventListener("click", () => {
   document.getElementById("modal-task").classList.remove("hidden");
 });
 
-document.getElementById("btn-confirm-add-member").addEventListener("click", () => {
+document.getElementById("btn-confirm-add-member").addEventListener("click", async () => {
   const name = document.getElementById("input-member-name").value.trim();
   const username = document.getElementById("input-member-username").value.trim().replace(/^@/, "");
 
@@ -1087,9 +1131,10 @@ document.getElementById("btn-confirm-add-member").addEventListener("click", () =
   renderMembers();
   populateMemberSelects();
   triggerHaptic("success");
+  await persistGroupData("✅ A'zo qo'shildi va saqlandi!");
 });
 
-document.getElementById("btn-confirm-add-task").addEventListener("click", () => {
+document.getElementById("btn-confirm-add-task").addEventListener("click", async () => {
   const taskText = document.getElementById("input-task-text").value.trim();
   if (!taskText) {
     alert("Iltimos, vazifa matnini kiriting!");
@@ -1100,6 +1145,7 @@ document.getElementById("btn-confirm-add-task").addEventListener("click", () => 
   closeModals();
   renderTasks();
   triggerHaptic("success");
+  await persistGroupData("✅ Vazifa qo'shildi va saqlandi!");
 });
 
 // Sozlamalarni saqlash

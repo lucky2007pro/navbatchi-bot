@@ -1,3 +1,4 @@
+import html
 from datetime import datetime
 from aiogram import Router, types, F
 from aiogram.filters import Command
@@ -5,6 +6,7 @@ from aiogram.enums import ChatType
 
 from database import finance_queries, queries
 from handlers.common import get_webapp_keyboard
+from handlers.utils import extract_command_args, esc_html
 
 router = Router()
 
@@ -12,6 +14,9 @@ router = Router()
 async def cmd_kassa(message: types.Message):
     """Umumiy kassa qoldig'i va oylik xarajatlar haqida ma'lumot."""
     chat_id = message.chat.id
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
     balance = await finance_queries.get_fund_balance(chat_id)
     month_total = await finance_queries.get_month_expense_total(chat_id)
     recent_expenses = await finance_queries.get_recent_expenses(chat_id, limit=5)
@@ -28,9 +33,11 @@ async def cmd_kassa(message: types.Message):
         lines.append("📝 <b>Oxirgi xarajatlar:</b>")
         for idx, exp in enumerate(recent_expenses, start=1):
             source_icon = "💰" if exp.get("payment_source") == "fund" else "👤"
+            safe_title = esc_html(exp.get("title"))
+            safe_paid_by = esc_html(exp.get("paid_by"))
             lines.append(
-                f"  {idx}. <b>{exp['title']}</b> — {exp['amount']:,} so'm "
-                f"<i>({source_icon} {exp['paid_by']})</i>"
+                f"  {idx}. <b>{safe_title}</b> — {exp['amount']:,} so'm "
+                f"<i>({source_icon} {safe_paid_by})</i>"
             )
     else:
         lines.append("<i>Hozircha xarajatlar kiritilmagan.</i>")
@@ -53,14 +60,16 @@ async def cmd_kassa(message: types.Message):
 async def cmd_xarajat(message: types.Message):
     """Tezkor xarajat yozish: /xarajat <summa> <nomi> yoki /xarajat <nomi> <summa>"""
     chat_id = message.chat.id
-    args = message.text.partition(" ")[2].strip()
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
+    args = extract_command_args(message.text)
 
     if not args:
         await message.reply(
             "✍️ <b>Xarajat kiritish namunasi:</b>\n"
             "<code>/xarajat 50000 Go'sht va sabzi</code>\n"
-            "<code>/xarajat Non va sut 15000</code>\n\n"
-            "Yoki to'liq Web App orqali boshqaring:",
+            "<code>/xarajat Non va sut 15000</code>",
             reply_markup=get_webapp_keyboard(chat_id),
             parse_mode="HTML"
         )
@@ -115,9 +124,9 @@ async def cmd_xarajat(message: types.Message):
 
     text = (
         f"✅ <b>Xarajat muvaffaqiyatli saqlandi!</b>\n\n"
-        f"🛒 <b>Nomi:</b> {title}\n"
+        f"🛒 <b>Nomi:</b> {esc_html(title)}\n"
         f"💸 <b>Summa:</b> {amount:,} so'm\n"
-        f"👤 <b>Kiritdi:</b> {paid_by}\n\n"
+        f"👤 <b>Kiritdi:</b> {esc_html(paid_by)}\n\n"
         f"💰 <b>Kassada qoldi:</b> {new_balance:,} so'm"
     )
 
@@ -131,14 +140,16 @@ async def cmd_xarajat(message: types.Message):
 async def cmd_kirim(message: types.Message):
     """Kassaga pul qo'shish: /kirim <summa> [izoh]"""
     chat_id = message.chat.id
-    args = message.text.partition(" ")[2].strip()
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
+    args = extract_command_args(message.text)
 
     if not args:
         await message.reply(
             "✍️ <b>Kassaga pul qo'shish namunasi:</b>\n"
             "<code>/kirim 100000 Oylik fond</code>\n"
-            "<code>/kirim 50000</code>\n\n"
-            "Yoki to'liq Web App orqali boshqaring:",
+            "<code>/kirim 50000</code>",
             reply_markup=get_webapp_keyboard(chat_id),
             parse_mode="HTML"
         )
@@ -170,11 +181,11 @@ async def cmd_kirim(message: types.Message):
 
     text = (
         f"📥 <b>Kassaga mablag' qo'shildi!</b>\n\n"
-        f"👤 <b>Kimdan:</b> {member_name}\n"
+        f"👤 <b>Kimdan:</b> {esc_html(member_name)}\n"
         f"💵 <b>Summa:</b> +{amount:,} so'm\n"
     )
     if note:
-        text += f"📝 <b>Izoh:</b> {note}\n"
+        text += f"📝 <b>Izoh:</b> {esc_html(note)}\n"
     text += f"\n💰 <b>Yangi kassa qoldig'i:</b> {new_balance:,} so'm"
 
     await message.answer(
@@ -187,14 +198,16 @@ async def cmd_kirim(message: types.Message):
 async def cmd_chiqim(message: types.Message):
     """Kassadan pul yechish: /chiqim <summa> [izoh]"""
     chat_id = message.chat.id
-    args = message.text.partition(" ")[2].strip()
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
+    args = extract_command_args(message.text)
 
     if not args:
         await message.reply(
             "✍️ <b>Kassadan pul yechish namunasi:</b>\n"
             "<code>/chiqim 70000 Gilam yuvish uchun</code>\n"
-            "<code>/chiqim 30000</code>\n\n"
-            "Yoki to'liq Web App orqali boshqaring:",
+            "<code>/chiqim 30000</code>",
             reply_markup=get_webapp_keyboard(chat_id),
             parse_mode="HTML"
         )
@@ -226,11 +239,11 @@ async def cmd_chiqim(message: types.Message):
 
     text = (
         f"💸 <b>Kassadan pul yechildi!</b>\n\n"
-        f"👤 <b>Kim oldi:</b> {member_name}\n"
+        f"👤 <b>Kim oldi:</b> {esc_html(member_name)}\n"
         f"💵 <b>Summa:</b> -{amount:,} so'm\n"
     )
     if note:
-        text += f"📝 <b>Izoh:</b> {note}\n"
+        text += f"📝 <b>Izoh:</b> {esc_html(note)}\n"
     text += f"\n💰 <b>Kassada qoldi:</b> {new_balance:,} so'm"
 
     await message.answer(
@@ -243,6 +256,9 @@ async def cmd_chiqim(message: types.Message):
 async def cmd_ijara(message: types.Message):
     """Ijara holati va to'lovlar monitoringi."""
     chat_id = message.chat.id
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
     settings = await finance_queries.get_rent_settings(chat_id)
     total_amount = settings.get("total_amount", 0)
     due_day = settings.get("due_day", 5)
@@ -263,12 +279,10 @@ async def cmd_ijara(message: types.Message):
         for m in status_list:
             icon = "✅" if m["is_paid"] else "⏳"
             status_text = "To'langan" if m["is_paid"] else "Kutilmoqda"
-            lines.append(f"  {icon} <b>{m['member_name']}</b>: {m['amount']:,} so'm ({status_text})")
+            safe_mname = esc_html(m.get("member_name"))
+            lines.append(f"  {icon} <b>{safe_mname}</b>: {m['amount']:,} so'm ({status_text})")
     else:
         lines.append("<i>Navbatchilar ro'yxatida xonadoshlar kiritilmagan.</i>")
-
-    lines.append("")
-    lines.append("📱 <i>Boshqarish va belgilash uchun Web App'ni oching:</i>")
 
     await message.answer(
         "\n".join(lines),
@@ -280,6 +294,9 @@ async def cmd_ijara(message: types.Message):
 async def cmd_bozorlik(message: types.Message):
     """Bozorlik ro'yxatini ko'rish."""
     chat_id = message.chat.id
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
     items = await finance_queries.get_shopping_items(chat_id)
 
     lines = [
@@ -293,7 +310,7 @@ async def cmd_bozorlik(message: types.Message):
     if pending:
         lines.append("📌 <b>Olinishi kerak:</b>")
         for idx, i in enumerate(pending, start=1):
-            lines.append(f"  ◻️ {idx}. {i['title']}")
+            lines.append(f"  ◻️ {idx}. {esc_html(i.get('title'))}")
     else:
         lines.append("✨ <i>Hamma narsa olingan yoki ro'yxat bo'sh!</i>")
 
@@ -301,10 +318,10 @@ async def cmd_bozorlik(message: types.Message):
         lines.append("")
         lines.append("✅ <b>Olinganlar:</b>")
         for idx, i in enumerate(bought, start=1):
-            lines.append(f"  <s>{i['title']}</s>")
+            lines.append(f"  <s>{esc_html(i.get('title'))}</s>")
 
     lines.append("")
-    lines.append("➕ <i>Yangi mahsulot qo'shish: /bozorlik_qosh <nomi></i>")
+    lines.append("➕ <i>Yangi mahsulot qo'shish:</i> <code>/bozorlik_qosh nomi</code>")
 
     await message.answer(
         "\n".join(lines),
@@ -316,7 +333,10 @@ async def cmd_bozorlik(message: types.Message):
 async def cmd_bozorlik_qosh(message: types.Message):
     """Bozorlikka yangi narsa qo'shish: /bozorlik_qosh <nomi>"""
     chat_id = message.chat.id
-    title = message.text.partition(" ")[2].strip()
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, message.chat.title or message.from_user.first_name or "Smart Kvartira")
+
+    title = extract_command_args(message.text)
 
     if not title:
         await message.reply("✍️ Mahsulot nomini yozing. Masalan: <code>/bozorlik_qosh Yog' va kartoshka</code>", parse_mode="HTML")
@@ -326,7 +346,7 @@ async def cmd_bozorlik_qosh(message: types.Message):
     await finance_queries.add_shopping_item(chat_id, title, added_by=sender)
 
     await message.answer(
-        f"✅ <b>Bozorlik ro'yxatiga qo'shildi:</b> {title}",
+        f"✅ <b>Bozorlik ro'yxatiga qo'shildi:</b> {esc_html(title)}",
         reply_markup=get_webapp_keyboard(chat_id),
         parse_mode="HTML"
     )

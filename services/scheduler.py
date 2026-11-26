@@ -1,3 +1,4 @@
+import html
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -7,7 +8,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 from config import TIMEZONE
 from database import queries, rating_queries
-from services.duty_manager import build_duty_message, advance_to_next_duty
+from services.duty_manager import build_duty_message, advance_to_next_duty, get_current_duty_info
 from handlers.common import get_webapp_keyboard
 from handlers.rating import build_rating_poll_text, get_rating_keyboard
 
@@ -58,15 +59,19 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
 
             # ---------------- 1. NAVBATCHILIKNI BAHOLASH (1 SOAT OLDIN) ----------------
             rating_time = get_one_hour_before(notify_time)
-            if rating_time == current_time_str and is_work_day(work_days, current_weekday):
+            if last_date and rating_time == current_time_str and is_work_day(work_days, current_weekday):
                 # Bugun baholash so'rovi allaqachon yuborilganmi?
                 if not await rating_queries.is_today_rating_sent(chat_id, current_date_str):
-                    members = await queries.get_members(chat_id)
-                    if members:
-                        current_index = group.get("current_index", 0)
-                        prev_index = (current_index - 1) % len(members)
-                        prev_member = members[prev_index]
-                        member_display = f"@{prev_member['username']}" if prev_member.get("username") else prev_member["name"]
+                    cur_member, members, _ = await get_current_duty_info(chat_id)
+                    if cur_member and members:
+                        raw_name = str(cur_member.get("name") or "").strip()
+                        raw_user = str(cur_member.get("username") or "").replace("@", "").strip()
+                        if raw_user and raw_name and raw_name != f"@{raw_user}":
+                            member_display = f"{raw_name} (@{raw_user})"
+                        elif raw_user:
+                            member_display = f"@{raw_user}"
+                        else:
+                            member_display = raw_name or "Navbatchi"
 
                         try:
                             # Yangi anonim baholash sessiyasini ochish
@@ -103,15 +108,12 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
             if not is_work_day(work_days, current_weekday):
                 continue
 
-            # Agar avval bildirishnoma yuborilgan bo'lsa, yangi kun uchun navbatni siljitamiz
-            if last_date:
-                await advance_to_next_duty(chat_id, notify_date=current_date_str)
-            else:
-                # Birinchi marta bo'lsa, hozirgi sanani qayd etamiz
-                cur_idx = group.get("current_index", 0)
-                await queries.update_group_index(chat_id, cur_idx, last_date=current_date_str)
+            members = await queries.get_members(chat_id)
+            if not members:
+                logger.info(f"Guruh {chat_id} uchun navbatchilar ro'yxati bo'sh, xabar yuborilmadi.")
+                continue
 
-            # Faol baholash sessiyasini yopish va natijasini olish
+            # Faol baholash sessiyasini yopish va natijasini olish (navbatni siljitishdan oldin)
             active_rating = await rating_queries.get_active_rating(chat_id)
             rating_summary = None
             if active_rating:
@@ -119,9 +121,10 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
                 # Guruhdagi so'rovnoma xabarini yakunlangan deb tahrirlash
                 if active_rating.get("message_id"):
                     try:
+                        safe_rated_member = html.escape(str(active_rating.get("member_name") or ""), quote=False)
                         closed_text = (
                             f"🧹 <b>NAVBATCHILIKNI BAHOLASH YAKUNLANDI!</b> 🔒\n\n"
-                            f"👤 Navbatchi: <b>{active_rating['member_name']}</b>\n"
+                            f"👤 Navbatchi: <b>{safe_rated_member}</b>\n"
                             f"📊 Natija: 👍 {rating_summary['likes_count']} ta | 👎 {rating_summary['dislikes_count']} ta\n\n"
                             f"<i>Ovoz bergan barcha xonadoshlarga rahmat!</i>"
                         )
@@ -140,10 +143,17 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
                     except Exception as edit_err:
                         logger.warning(f"Baholash xabarini yopishda xatolik: {edit_err}")
 
+            # Agar avval bildirishnoma yuborilgan bo'lsa, yangi kun uchun navbatni siljitamiz
+            if last_date:
+                await advance_to_next_duty(chat_id, notify_date=current_date_str)
+            else:
+                # Birinchi marta bo'lsa, hozirgi indeks va sanani qayd etamiz
+                cur_idx = (group.get("current_index") or 0) % len(members)
+                await queries.update_group_index(chat_id, cur_idx, last_date=current_date_str)
+
             # Xabarni shakllantirish (oldingi baholash natijasi bilan birga)
             message_text = await build_duty_message(chat_id, is_automatic=True, rating_summary=rating_summary)
             if not message_text:
-                logger.info(f"Guruh {chat_id} uchun navbatchilar ro'yxati bo'sh, xabar yuborilmadi.")
                 continue
 
             try:
@@ -153,25 +163,34 @@ async def check_and_send_scheduled_duties(bot: Bot) -> None:
                 has_temp = bool(updated_group and updated_group.get("temp_duty_member_id"))
                 markup = get_duty_keyboard(chat_id, has_temp=has_temp)
 
-                # Guruhga yuborish
-                sent_msg = await bot.send_message(
-                    chat_id=chat_id,
-                    text=message_text,
-                    reply_markup=markup,
-                    parse_mode="HTML"
-                )
-
-                # Xabarni qadash (pin)
+                # Guruhga yuborish (agar tugmada muammo bo'lsa tugmasiz yuborish fallbacki bilan)
                 try:
-                    await bot.pin_chat_message(
+                    sent_msg = await bot.send_message(
                         chat_id=chat_id,
-                        message_id=sent_msg.message_id,
-                        disable_notification=False
+                        text=message_text,
+                        reply_markup=markup,
+                        parse_mode="HTML"
                     )
-                except TelegramBadRequest as pin_err:
-                    logger.warning(f"Guruhda {chat_id} xabarni pin qilishga ruxsat yo'q: {pin_err}")
+                except TelegramBadRequest as markup_err:
+                    logger.warning(f"Guruh {chat_id} ga tugma bilan yuborishda xatolik ({markup_err}), tugmasiz yuborilmoqda.")
+                    sent_msg = await bot.send_message(
+                        chat_id=chat_id,
+                        text=message_text,
+                        parse_mode="HTML"
+                    )
 
-                logger.info(f"Guruh {chat_id} ga navbatchilik xabari muvaffaqiyatli yuborildi va pin qilindi.")
+                # Xabarni qadash (pin) — faqat guruhlarda
+                if chat_id < 0:
+                    try:
+                        await bot.pin_chat_message(
+                            chat_id=chat_id,
+                            message_id=sent_msg.message_id,
+                            disable_notification=False
+                        )
+                    except TelegramBadRequest as pin_err:
+                        logger.warning(f"Guruhda {chat_id} xabarni pin qilishga ruxsat yo'q: {pin_err}")
+
+                logger.info(f"Guruh {chat_id} ga navbatchilik xabari muvaffaqiyatli yuborildi.")
 
             except TelegramForbiddenError:
                 logger.warning(f"Bot guruhdan {chat_id} chiqarilgan yoki bloklangan.")
@@ -234,8 +253,10 @@ async def check_and_send_rent_reminders(bot: Bot) -> None:
             ]
 
             for m in unpaid_members:
-                username = f" (@{m['username']})" if m.get("username") else ""
-                lines.append(f"  • <b>{m['member_name']}</b>{username}: {m['amount']:,} so'm")
+                raw_uname = str(m.get("username") or "").replace("@", "").strip()
+                username = f" (@{html.escape(raw_uname, quote=False)})" if raw_uname else ""
+                safe_mname = html.escape(str(m.get("member_name") or ""), quote=False)
+                lines.append(f"  • <b>{safe_mname}</b>{username}: {m['amount']:,} so'm")
 
             lines.append("")
             lines.append("💳 <i>Iltimos, o'z vaqtida to'lovni amalga oshiring va Web App'da belgilang.</i>")

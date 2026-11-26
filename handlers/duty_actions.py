@@ -1,4 +1,6 @@
+import html
 import logging
+from typing import Optional
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -7,10 +9,34 @@ from aiogram.enums import ChatType
 from database import queries
 from services.duty_manager import get_current_duty_info, build_duty_message
 from handlers.common import get_webapp_keyboard
+from handlers.utils import esc_html
 
 logger = logging.getLogger(__name__)
 
 router = Router()
+
+
+def _safe_member_tag(member: Optional[dict]) -> str:
+    if not member:
+        return "Noma'lum"
+    raw_uname = str(member.get("username") or "").replace("@", "").strip()
+    raw_name = str(member.get("name") or "Noma'lum").strip()
+    if raw_uname:
+        return f"@{esc_html(raw_uname)}"
+    return esc_html(raw_name)
+
+
+def _safe_member_label(member: Optional[dict]) -> str:
+    if not member:
+        return "Noma'lum"
+    raw_uname = str(member.get("username") or "").replace("@", "").strip()
+    raw_name = str(member.get("name") or "Noma'lum").strip()
+    if raw_uname and raw_name != f"@{raw_uname}":
+        return f"{esc_html(raw_name)} (@{esc_html(raw_uname)})"
+    if raw_uname:
+        return f"@{esc_html(raw_uname)}"
+    return esc_html(raw_name)
+
 
 def get_duty_keyboard(chat_id: int, has_temp: bool = False) -> InlineKeyboardMarkup:
     """Navbatchilik xabari ostidagi qulay boshqaruv tugmalari."""
@@ -32,17 +58,13 @@ def get_duty_keyboard(chat_id: int, has_temp: bool = False) -> InlineKeyboardMar
 @router.message(Command("swap"))
 async def cmd_almashtirish(message: types.Message):
     """Navbatchilikni boshqa a'zo bilan bir martaga almashtirish."""
-    if message.chat.type == ChatType.PRIVATE:
-        await message.reply("ℹ️ Bu buyruq faqat guruhlarda ishlaydi.")
-        return
-
     chat_id = message.chat.id
     members = await queries.get_members(chat_id)
     if not members or len(members) < 2:
-        await message.reply("⚠️ Guruhda navbatchilar ro'yxati kamida 2 kishi bo'lishi kerak! /navbatchilar orqali kiriting.")
+        await message.reply("⚠️ Navbatchilar ro'yxati kamida 2 kishi bo'lishi kerak! /navbatchilar orqali kiriting.")
         return
 
-    cur_member, all_members, _ = await get_current_duty_info(chat_id)
+    cur_member, _, _ = await get_current_duty_info(chat_id)
     cur_id = cur_member["id"] if cur_member else None
 
     # Boshqa a'zolar ro'yxatidan tanlash uchun tugmalar
@@ -50,7 +72,8 @@ async def cmd_almashtirish(message: types.Message):
     for m in members:
         if m["id"] == cur_id:
             continue
-        uname = f" (@{m['username']})" if m.get("username") else ""
+        raw_uname = str(m.get("username") or "").replace("@", "").strip()
+        uname = f" (@{raw_uname})" if raw_uname else ""
         keyboard_buttons.append([
             InlineKeyboardButton(
                 text=f"👤 {m['name']}{uname}",
@@ -61,9 +84,7 @@ async def cmd_almashtirish(message: types.Message):
         InlineKeyboardButton(text="❌ Bekor qilish", callback_data="swap_cancel")
     ])
 
-    cur_name = cur_member.get("name", "Hozirgi navbatchi")
-    if cur_member.get("username"):
-        cur_name += f" (@{cur_member['username']})"
+    cur_name = _safe_member_label(cur_member)
 
     text = (
         "🔄 <b>NAVBATCHILIKNI ALMASHTIRISH</b>\n\n"
@@ -83,17 +104,18 @@ async def callback_swap_init(call: CallbackQuery):
     chat_id = call.message.chat.id
     members = await queries.get_members(chat_id)
     if not members or len(members) < 2:
-        await call.answer("Guruhda kamida 2 ta navbatchi bo'lishi kerak!", show_alert=True)
+        await call.answer("Kamida 2 ta navbatchi bo'lishi kerak!", show_alert=True)
         return
 
-    cur_member, all_members, _ = await get_current_duty_info(chat_id)
+    cur_member, _, _ = await get_current_duty_info(chat_id)
     cur_id = cur_member["id"] if cur_member else None
 
     keyboard_buttons = []
     for m in members:
         if m["id"] == cur_id:
             continue
-        uname = f" (@{m['username']})" if m.get("username") else ""
+        raw_uname = str(m.get("username") or "").replace("@", "").strip()
+        uname = f" (@{raw_uname})" if raw_uname else ""
         keyboard_buttons.append([
             InlineKeyboardButton(
                 text=f"👤 {m['name']}{uname}",
@@ -104,9 +126,7 @@ async def callback_swap_init(call: CallbackQuery):
         InlineKeyboardButton(text="❌ Bekor qilish", callback_data="swap_cancel")
     ])
 
-    cur_name = cur_member.get("name", "Hozirgi navbatchi")
-    if cur_member.get("username"):
-        cur_name += f" (@{cur_member['username']})"
+    cur_name = _safe_member_label(cur_member)
 
     text = (
         "🔄 <b>NAVBATCHILIKNI ALMASHTIRISH</b>\n\n"
@@ -140,17 +160,26 @@ async def callback_swap_pick(call: CallbackQuery):
     # Taklifni bazada saqlash
     req_id = await queries.create_swap_request(chat_id, cur_member["id"], to_member["id"])
 
-    initiator = call.from_user.full_name or call.from_user.first_name
-    from_tag = f"@{cur_member['username']}" if cur_member.get("username") else cur_member["name"]
-    to_tag = f"@{to_member['username']}" if to_member.get("username") else to_member["name"]
+    initiator = esc_html(call.from_user.full_name or call.from_user.first_name or "Xonadosh")
+    from_tag = _safe_member_tag(cur_member)
+    to_tag = _safe_member_tag(to_member)
+    safe_to_name = esc_html(to_member.get("name"))
+    safe_cur_name = esc_html(cur_member.get("name"))
+
+    no_username_hint = ""
+    if not (to_member.get("username") or "").strip():
+        no_username_hint = (
+            "\n💡 <i>(Ushbu a'zoda Telegram username kiritilmagan — o'zaro kelishib, xonadoshlardan biri tasdiqlashi mumkin)</i>"
+        )
 
     proposal_text = (
         "📩 <b>NAVBATCHILIKNI ALMASHTIRISH TAKLIFI!</b>\n\n"
         f"👤 <b>Taklif yuboruvchi:</b> {initiator}\n"
         f"👤 <b>Asl navbatchi:</b> {from_tag}\n"
         f"👉 <b>Taklif etilayotgan shaxs:</b> {to_tag}\n\n"
-        f"❓ <b>{to_member['name']}</b>, siz bugun <b>{cur_member['name']}</b> o'rniga navbatchilik qilishga rozimisiz?\n\n"
+        f"❓ <b>{safe_to_name}</b>, siz bugun <b>{safe_cur_name}</b> o'rniga navbatchilik qilishga rozimisiz?\n\n"
         f"ℹ️ <i>(Bu 1 martalik almashinuv: bugun almashadi, keyingi navbatchilikda jadval yana o'z joyiga qaytadi)</i>"
+        f"{no_username_hint}"
     )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -179,14 +208,17 @@ async def callback_swap_accept(call: CallbackQuery):
     chat_id = req["chat_id"]
     to_member = await queries.get_member_by_id(req["to_member_id"])
     from_member = await queries.get_member_by_id(req["from_member_id"])
+    if not to_member or not from_member:
+        await queries.update_swap_request_status(req_id, "cancelled")
+        await call.answer("Navbatchilar ro'yxati o'zgargan, qaytadan urinib ko'ring!", show_alert=True)
+        return
 
     # Foydalanuvchini tekshirish: agar to_member da username bo'lsa, mos keladimi?
-    user_username = (call.from_user.username or "").lower()
-    target_username = (to_member.get("username") or "").lower()
-    
+    user_username = (call.from_user.username or "").lower().replace("@", "").strip()
+    target_username = (to_member.get("username") or "").lower().replace("@", "").strip()
+
     # Agar target_username bo'lsa va bosgan odam boshqa bo'lsa
     if target_username and user_username and target_username != user_username:
-        # Guruh ichidagi xonadoshlar bo'lgani sababli, boshqa odam bossa ogohlantiramiz
         await call.answer(f"⛔ Bu taklif faqat @{target_username} ({to_member['name']}) uchun!", show_alert=True)
         return
 
@@ -194,8 +226,8 @@ async def callback_swap_accept(call: CallbackQuery):
     await queries.update_swap_request_status(req_id, "accepted")
     await queries.set_temp_duty(chat_id, to_member["id"], "swap", from_member["id"])
 
-    to_tag = f"@{to_member['username']}" if to_member.get("username") else to_member["name"]
-    from_tag = f"@{from_member['username']}" if from_member.get("username") else from_member["name"]
+    to_tag = _safe_member_tag(to_member)
+    from_tag = _safe_member_tag(from_member)
 
     success_text = (
         "✅ <b>NAVBATCHILIK MUVAFFAQIYATLI ALMASHILDI!</b>\n\n"
@@ -223,19 +255,25 @@ async def callback_swap_reject(call: CallbackQuery):
 
     to_member = await queries.get_member_by_id(req["to_member_id"])
     from_member = await queries.get_member_by_id(req["from_member_id"])
+    if not to_member or not from_member:
+        await queries.update_swap_request_status(req_id, "cancelled")
+        await call.answer("Navbatchilar ro'yxati o'zgargan!", show_alert=True)
+        return
 
-    user_username = (call.from_user.username or "").lower()
-    target_username = (to_member.get("username") or "").lower()
+    user_username = (call.from_user.username or "").lower().replace("@", "").strip()
+    target_username = (to_member.get("username") or "").lower().replace("@", "").strip()
     if target_username and user_username and target_username != user_username:
         await call.answer(f"⛔ Bu taklif faqat @{target_username} uchun!", show_alert=True)
         return
 
     await queries.update_swap_request_status(req_id, "rejected")
 
+    safe_to = esc_html(to_member.get("name"))
+    safe_from = esc_html(from_member.get("name"))
     reject_text = (
         "❌ <b>TAKLIF RAD ETILDI</b>\n\n"
-        f"<b>{to_member['name']}</b> navbatchilikni almashtirish taklifini rad etdi.\n"
-        f"Bugungi navbatchi o'zgarishsiz qoldi: <b>{from_member['name']}</b>."
+        f"<b>{safe_to}</b> navbatchilikni almashtirish taklifini rad etdi.\n"
+        f"Bugungi navbatchi o'zgarishsiz qoldi: <b>{safe_from}</b>."
     )
 
     await call.message.edit_text(reject_text, reply_markup=None, parse_mode="HTML")
@@ -252,31 +290,27 @@ async def callback_swap_cancel(call: CallbackQuery):
 @router.message(Command("skip"))
 async def cmd_otkazish(message: types.Message):
     """Bugungi navbatchilikni bir martaga keyingi a'zoga o'tkazib yuborish."""
-    if message.chat.type == ChatType.PRIVATE:
-        await message.reply("ℹ️ Bu buyruq faqat guruhlarda ishlaydi.")
-        return
-
     chat_id = message.chat.id
-    members = await queries.get_members(chat_id)
+    _, members, cur_idx = await get_current_duty_info(chat_id)
     if not members or len(members) < 2:
-        await message.reply("⚠️ Guruhda kamida 2 ta navbatchi bo'lishi kerak!")
+        await message.reply("⚠️ Kamida 2 ta navbatchi bo'lishi kerak!")
         return
 
-    group = await queries.get_group(chat_id)
-    cur_idx = (group.get("current_index", 0) if group else 0) % len(members)
     cur_member = members[cur_idx]
     next_idx = (cur_idx + 1) % len(members)
     next_member = members[next_idx]
 
-    cur_tag = f"@{cur_member['username']}" if cur_member.get("username") else cur_member["name"]
-    next_tag = f"@{next_member['username']}" if next_member.get("username") else next_member["name"]
+    cur_tag = _safe_member_tag(cur_member)
+    next_tag = _safe_member_tag(next_member)
+    safe_next_name = esc_html(next_member.get("name"))
+    safe_cur_name = esc_html(cur_member.get("name"))
 
     text = (
         "⏭️ <b>NAVBATCHILIKNI O'TKAZIB YUBORISH</b>\n\n"
         f"👤 <b>Hozirgi navbatchi:</b> {cur_tag}\n"
         f"👉 <b>O'tkazilayotgan shaxs:</b> {next_tag}\n\n"
-        f"❓ Bugungi navbatchilikni 1 martaga <b>{next_member['name']}</b>ga o'tkazmoqchimisiz?\n\n"
-        f"ℹ️ <i>(Keyingi navbatchilikda navbat yana o'z joyiga — <b>{cur_member['name']}</b>ga qaytadi)</i>"
+        f"❓ Bugungi navbatchilikni 1 martaga <b>{safe_next_name}</b>ga o'tkazmoqchimisiz?\n\n"
+        f"ℹ️ <i>(Keyingi navbatchilikda navbat yana o'z joyiga — <b>{safe_cur_name}</b>ga qaytadi)</i>"
     )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -295,26 +329,26 @@ async def cmd_otkazish(message: types.Message):
 async def callback_skip_init(call: CallbackQuery):
     """Navbatchi xabaridagi '⏭️ O'tkazib yuborish' tugmasi bosilganda."""
     chat_id = call.message.chat.id
-    members = await queries.get_members(chat_id)
+    _, members, cur_idx = await get_current_duty_info(chat_id)
     if not members or len(members) < 2:
-        await call.answer("Guruhda kamida 2 ta navbatchi bo'lishi kerak!", show_alert=True)
+        await call.answer("Kamida 2 ta navbatchi bo'lishi kerak!", show_alert=True)
         return
 
-    group = await queries.get_group(chat_id)
-    cur_idx = (group.get("current_index", 0) if group else 0) % len(members)
     cur_member = members[cur_idx]
     next_idx = (cur_idx + 1) % len(members)
     next_member = members[next_idx]
 
-    cur_tag = f"@{cur_member['username']}" if cur_member.get("username") else cur_member["name"]
-    next_tag = f"@{next_member['username']}" if next_member.get("username") else next_member["name"]
+    cur_tag = _safe_member_tag(cur_member)
+    next_tag = _safe_member_tag(next_member)
+    safe_next_name = esc_html(next_member.get("name"))
+    safe_cur_name = esc_html(cur_member.get("name"))
 
     text = (
         "⏭️ <b>NAVBATCHILIKNI O'TKAZIB YUBORISH</b>\n\n"
         f"👤 <b>Hozirgi navbatchi:</b> {cur_tag}\n"
         f"👉 <b>O'tkazilayotgan shaxs:</b> {next_tag}\n\n"
-        f"❓ Bugungi navbatchilikni 1 martaga <b>{next_member['name']}</b>ga o'tkazmoqchimisiz?\n\n"
-        f"ℹ️ <i>(Keyingi navbatchilikda navbat yana o'z joyiga — <b>{cur_member['name']}</b>ga qaytadi)</i>"
+        f"❓ Bugungi navbatchilikni 1 martaga <b>{safe_next_name}</b>ga o'tkazmoqchimisiz?\n\n"
+        f"ℹ️ <i>(Keyingi navbatchilikda navbat yana o'z joyiga — <b>{safe_cur_name}</b>ga qaytadi)</i>"
     )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -348,14 +382,15 @@ async def callback_skip_confirm(call: CallbackQuery):
     # Bazaga bir martalik o'tkazib yuborishni yozamiz
     await queries.set_temp_duty(chat_id, next_member["id"], "skip", orig_member["id"])
 
-    next_tag = f"@{next_member['username']}" if next_member.get("username") else next_member["name"]
-    orig_tag = f"@{orig_member['username']}" if orig_member.get("username") else orig_member["name"]
+    next_tag = _safe_member_tag(next_member)
+    orig_tag = _safe_member_tag(orig_member)
+    safe_orig_name = esc_html(orig_member.get("name"))
 
     text = (
         "⏭️ <b>NAVBATCHILIK 1 MARTAGA O'TKAZIB YUBORILDI!</b>\n\n"
         f"👤 <b>Bugungi navbatchi:</b> {next_tag}\n"
         f"<i>({orig_tag} bugungi navbatini 1 martaga o'tkazib yubordi)</i>\n\n"
-        f"✨ <i>Keyingi navbatchilikda navbat yana o'z joyiga — <b>{orig_member['name']}</b>ga qaytadi.</i>\n\n"
+        f"✨ <i>Keyingi navbatchilikda navbat yana o'z joyiga — <b>{safe_orig_name}</b>ga qaytadi.</i>\n\n"
         "Barcha ma'lumotni ko'rish: /navbatchi"
     )
 
@@ -382,7 +417,11 @@ async def cmd_qaytarish(message: types.Message):
 
     await queries.clear_temp_duty(chat_id)
     cur_member, _, _ = await get_current_duty_info(chat_id)
-    tag = f"@{cur_member['username']}" if cur_member.get("username") else cur_member["name"]
+    if not cur_member:
+        await message.reply("🔄 Vaqtinchalik holat tozalandi.")
+        return
+
+    tag = _safe_member_tag(cur_member)
 
     await message.reply(
         f"🔄 <b>Navbatchilik asl holatiga qaytarildi!</b>\n\n"
@@ -397,7 +436,7 @@ async def callback_duty_reset_temp(call: CallbackQuery):
     chat_id = call.message.chat.id
     await queries.clear_temp_duty(chat_id)
     cur_member, _, _ = await get_current_duty_info(chat_id)
-    tag = f"@{cur_member['username']}" if cur_member.get("username") else cur_member["name"]
+    tag = _safe_member_tag(cur_member)
 
     await call.answer("Asl holatiga qaytarildi!")
     await call.message.reply(

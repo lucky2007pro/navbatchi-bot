@@ -78,14 +78,41 @@ async def set_members(chat_id: int, members: List[Dict[str, str]]) -> None:
     members = [{"name": "Ali", "username": "ali"}, ...]
     """
     async with get_db_connection() as conn:
+        # Guruh bazada mavjudligini kafolatlaymiz (aks holda bildirishnoma va navbatchi ishlamay qoladi)
+        await conn.execute("""
+            INSERT OR IGNORE INTO groups (chat_id, chat_title, notify_time, work_days)
+            VALUES (?, 'Smart Kvartira', ?, ?)
+        """, (chat_id, DEFAULT_NOTIFY_TIME, DEFAULT_WORK_DAYS))
+
         await conn.execute("DELETE FROM duty_members WHERE chat_id = ?", (chat_id,))
-        for idx, m in enumerate(members, start=1):
+        order_idx = 1
+        for m in members:
+            raw_name = str(m.get("name") or "").strip()
+            raw_username = str(m.get("username") or "").replace("@", "").strip()
+            if not raw_name and raw_username:
+                raw_name = f"@{raw_username}"
+            if not raw_name:
+                continue
             await conn.execute("""
                 INSERT INTO duty_members (chat_id, order_num, name, username)
                 VALUES (?, ?, ?, ?)
-            """, (chat_id, idx, m.get("name", ""), m.get("username", "")))
-        # Yangi ro'yxat kiritilganda navbatni boshidan boshlash
-        await conn.execute("UPDATE groups SET current_index = 0 WHERE chat_id = ?", (chat_id,))
+            """, (chat_id, order_idx, raw_name, raw_username))
+            order_idx += 1
+
+        # Yangi ro'yxat kiritilganda navbatni boshidan boshlash va vaqtinchalik holatlarni tozalash
+        await conn.execute("""
+            UPDATE groups
+            SET current_index = 0,
+                last_notified_date = '',
+                temp_duty_member_id = NULL,
+                temp_duty_type = NULL,
+                temp_duty_original_id = NULL
+            WHERE chat_id = ?
+        """, (chat_id,))
+        await conn.execute("""
+            UPDATE duty_swap_requests SET status = 'cancelled'
+            WHERE chat_id = ? AND status = 'pending'
+        """, (chat_id,))
         await conn.commit()
 
 async def get_members(chat_id: int) -> List[dict]:
@@ -101,7 +128,37 @@ async def clear_members(chat_id: int) -> None:
     """Guruh navbatchilarini o'chiradi."""
     async with get_db_connection() as conn:
         await conn.execute("DELETE FROM duty_members WHERE chat_id = ?", (chat_id,))
-        await conn.execute("UPDATE groups SET current_index = 0 WHERE chat_id = ?", (chat_id,))
+        await conn.execute("""
+            UPDATE groups
+            SET current_index = 0,
+                last_notified_date = '',
+                temp_duty_member_id = NULL,
+                temp_duty_type = NULL,
+                temp_duty_original_id = NULL
+            WHERE chat_id = ?
+        """, (chat_id,))
+        await conn.execute("""
+            UPDATE duty_swap_requests SET status = 'cancelled'
+            WHERE chat_id = ? AND status = 'pending'
+        """, (chat_id,))
+        await conn.commit()
+
+async def reset_schedule_progress(chat_id: int) -> None:
+    """Jadvalni 1-o'rindan yangidan boshlaydi va vaqtinchalik navbatlarni tozalaydi."""
+    async with get_db_connection() as conn:
+        await conn.execute("""
+            UPDATE groups
+            SET current_index = 0,
+                last_notified_date = '',
+                temp_duty_member_id = NULL,
+                temp_duty_type = NULL,
+                temp_duty_original_id = NULL
+            WHERE chat_id = ?
+        """, (chat_id,))
+        await conn.execute("""
+            UPDATE duty_swap_requests SET status = 'cancelled'
+            WHERE chat_id = ? AND status = 'pending'
+        """, (chat_id,))
         await conn.commit()
 
 # ==================== VAZIFALAR BO'YICHA SO'ROVLAR ====================

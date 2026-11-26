@@ -1,4 +1,6 @@
+import html
 import logging
+import re
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.enums import ChatType
@@ -8,6 +10,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 from database import rating_queries, queries
 from handlers.common import get_webapp_keyboard
+from handlers.utils import esc_html
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +30,12 @@ def get_rating_keyboard(rating_id: int, likes: int = 0, dislikes: int = 0, is_cl
 
 def build_rating_poll_text(member_name: str, duty_date: str) -> str:
     """Baholash xabari matni."""
+    safe_member = esc_html(member_name or "Navbatchi")
+    safe_date = esc_html(duty_date)
     return (
         f"🧹 <b>NAVBATCHILIKNI BAHOLASH VAQTI!</b> 🗳\n\n"
-        f"👤 Navbatchi: <b>{member_name}</b>\n"
-        f"📅 Sana: <b>{duty_date}</b>\n\n"
+        f"👤 Navbatchi: <b>{safe_member}</b>\n"
+        f"📅 Sana: <b>{safe_date}</b>\n\n"
         f"Xonadoshlar, navbatchilik qanday bajarildi? Oshxona, xonalar tozaligi va tartib ma'qul bo'ldimi?\n\n"
         f"<i>🔒 Ovoz berish 100% anonim — kim qanday baholagani hech kimga ko'rsatilmaydi!</i>"
     )
@@ -68,30 +73,43 @@ async def cb_vote(callback: types.CallbackQuery):
     member_name = (rating.get("member_name") or "").strip()
 
     # Navbatchining o'zi o'ziga ovoz berishini oldini olish
-    user_username = (from_user.username or "").lower().replace("@", "")
-    user_first_name = (from_user.first_name or "").lower()
-    user_full_name = (from_user.full_name or "").lower()
+    user_username = (from_user.username or "").lower().replace("@", "").strip()
+    user_first_name = (from_user.first_name or "").lower().strip()
+    user_full_name = (from_user.full_name or "").lower().strip()
+
+    # member_name 'Ali (@ali)', '@ali' yoki 'Ali' bo'lishi mumkin
+    uname_in_label = ""
+    uname_match = re.search(r"@([a-zA-Z0-9_]{3,32})", member_name)
+    if uname_match:
+        uname_in_label = uname_match.group(1).lower()
+    name_in_label = re.sub(r"\(?@[a-zA-Z0-9_]{3,32}\)?", "", member_name).strip().lower()
     target_clean = member_name.lower().replace("@", "").strip()
 
     is_self = False
-    if user_username and user_username == target_clean:
+    if user_username and (user_username == target_clean or (uname_in_label and user_username == uname_in_label)):
         is_self = True
-    elif target_clean and (target_clean == user_first_name or target_clean == user_full_name):
+    elif uname_in_label:
+        # Agar navbatchining aniq @username si bo'lsa, faqat username bo'yicha tekshiramiz
+        # (bir xil ismli ikki kishi adashib bloklanmasligi uchun)
+        is_self = False
+    elif name_in_label and (name_in_label == user_first_name or name_in_label == user_full_name):
         is_self = True
 
     # Shuningdek guruh a'zolar ro'yxatidan ham tekshiramiz
     if not is_self and rating.get("chat_id"):
         members = await queries.get_members(rating["chat_id"])
         for m in members:
-            m_name = m.get("name", "").strip().lower()
-            m_user = m.get("username", "").strip().lower().replace("@", "")
-            if (m_name == target_clean or (m_user and m_user == target_clean)):
-                if user_username and m_user and user_username == m_user:
-                    is_self = True
-                    break
-                if user_full_name and m_name and (user_full_name == m_name or user_first_name == m_name):
-                    is_self = True
-                    break
+            m_name = (m.get("name") or "").strip().lower()
+            m_user = (m.get("username") or "").strip().lower().replace("@", "")
+            if (m_user and (m_user == target_clean or m_user == uname_in_label)) or (not m_user and m_name and m_name in (target_clean, name_in_label)):
+                if m_user:
+                    if user_username and user_username == m_user:
+                        is_self = True
+                        break
+                else:
+                    if user_full_name and m_name and (user_full_name == m_name or user_first_name == m_name):
+                        is_self = True
+                        break
 
     if is_self:
         await callback.answer("❌ O'zingizning navbatchiligingizga ovoz bera olmaysiz! 😊", show_alert=True)
@@ -120,29 +138,27 @@ async def cb_vote(callback: types.CallbackQuery):
 @router.message(Command("reyting"))
 async def cmd_reyting(message: types.Message):
     """Xonadoshlar navbatchilik reytingi (Liderlar jadvali)."""
-    if message.chat.type == ChatType.PRIVATE:
-        await message.answer("ℹ️ Bu buyruq faqat guruhlarda ishlaydi. Botni kvartira guruhiga qo'shing.")
-        return
-
     leaderboard = await rating_queries.get_member_ratings_leaderboard(message.chat.id)
     if not leaderboard:
         await message.answer(
-            "📊 <b>Guruhda hali navbatchiliklar baholanmagan!</b>\n\n"
-            "Har kuni navbatchilik almashishidan 1 soat oldin guruhga avtomatik baholash so'rovi yuboriladi.",
+            "📊 <b>Hali navbatchiliklar baholanmagan!</b>\n\n"
+            "Har kuni navbatchilik almashishidan 1 soat oldin avtomatik baholash so'rovi yuboriladi.",
             reply_markup=get_webapp_keyboard(message.chat.id),
             parse_mode="HTML"
         )
         return
 
+    raw_title = message.chat.title or message.from_user.first_name or "Smart Kvartira"
+    safe_title = esc_html(raw_title)
     lines = [
-        f"🏆 <b>'{message.chat.title}' GURUHI NAVBATCHILIK REYTINGI:</b>",
+        f"🏆 <b>'{safe_title}' NAVBATCHILIK REYTINGI:</b>",
         ""
     ]
 
     medals = ["🥇", "🥈", "🥉"]
     for idx, item in enumerate(leaderboard):
         badge = medals[idx] if idx < 3 else f"<b>{idx + 1}.</b>"
-        name = item["member_name"]
+        name = esc_html(item.get("member_name") or "Noma'lum")
         likes = item["total_likes"]
         dislikes = item["total_dislikes"]
         duties = item["total_duties"]

@@ -111,21 +111,38 @@ async def handle_save_group_data(request: web.Request) -> web.Response:
             "error": "Ruxsat berilmadi!"
         }, status=403)
 
+    if not await queries.get_group(chat_id):
+        await queries.register_or_update_group(chat_id, "Smart Kvartira")
+
     # 1. Navbatchilar ro'yxatini yangilash
     if "members" in data and isinstance(data["members"], list):
         formatted_members = []
         for m in data["members"]:
-            name = str(m.get("name", "")).strip()
-            username = str(m.get("username", "")).replace("@", "").strip()
+            if not isinstance(m, dict):
+                continue
+            name = str(m.get("name") or "").strip()
+            username = str(m.get("username") or "").replace("@", "").strip()
+            if not name and username:
+                name = f"@{username}"
             if name:
                 formatted_members.append({"name": name, "username": username})
-        if formatted_members:
-            await queries.set_members(chat_id, formatted_members)
+
+        if not formatted_members:
+            await queries.clear_members(chat_id)
+        else:
+            existing_members = await queries.get_members(chat_id)
+            old_pairs = [(em.get("name", ""), em.get("username", "")) for em in existing_members]
+            new_pairs = [(fm["name"], fm["username"]) for fm in formatted_members]
+            if old_pairs != new_pairs:
+                await queries.set_members(chat_id, formatted_members)
 
     # 2. Vazifalar ro'yxatini yangilash
     if "tasks" in data and isinstance(data["tasks"], list):
-        formatted_tasks = [str(t).strip() for t in data["tasks"] if str(t).strip()]
-        await queries.set_tasks(chat_id, formatted_tasks)
+        formatted_tasks = [str(t or "").strip() for t in data["tasks"] if str(t or "").strip()]
+        if formatted_tasks:
+            await queries.set_tasks(chat_id, formatted_tasks)
+        else:
+            await queries.clear_tasks(chat_id)
 
     # 3. Sozlamalarni yangilash
     settings = data.get("settings", {})
@@ -217,9 +234,9 @@ async def handle_add_fund_income(request: web.Request) -> web.Response:
     try:
         data = await request.json()
         chat_id = int(data.get("chat_id"))
-        member_name = str(data.get("member_name", "")).strip()
-        amount = int(data.get("amount", 0))
-        note = str(data.get("note", "")).strip()
+        member_name = str(data.get("member_name") or "").strip()
+        amount = int(data.get("amount") or 0)
+        note = str(data.get("note") or "").strip()
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
 
@@ -239,9 +256,9 @@ async def handle_add_fund_withdrawal(request: web.Request) -> web.Response:
     try:
         data = await request.json()
         chat_id = int(data.get("chat_id"))
-        member_name = str(data.get("member_name", "")).strip()
-        amount = int(data.get("amount", 0))
-        note = str(data.get("note", "")).strip()
+        member_name = str(data.get("member_name") or "").strip()
+        amount = int(data.get("amount") or 0)
+        note = str(data.get("note") or "").strip()
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
 
@@ -319,11 +336,11 @@ async def handle_add_expense(request: web.Request) -> web.Response:
     try:
         data = await request.json()
         chat_id = int(data.get("chat_id"))
-        title = str(data.get("title", "")).strip()
-        amount = int(data.get("amount", 0))
-        paid_by = str(data.get("paid_by", "")).strip()
-        payment_source = str(data.get("payment_source", "fund")).strip()
-        category = str(data.get("category", "Bozorlik")).strip()
+        title = str(data.get("title") or "").strip()
+        amount = int(data.get("amount") or 0)
+        paid_by = str(data.get("paid_by") or "").strip()
+        payment_source = str(data.get("payment_source") or "fund").strip()
+        category = str(data.get("category") or "Bozorlik").strip()
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
 
@@ -360,9 +377,9 @@ async def handle_toggle_rent_payment(request: web.Request) -> web.Response:
     try:
         data = await request.json()
         chat_id = int(data.get("chat_id"))
-        member_name = str(data.get("member_name", "")).strip()
-        month_year = str(data.get("month_year", "")).strip()
-        amount = int(data.get("amount", 0))
+        member_name = str(data.get("member_name") or "").strip()
+        month_year = str(data.get("month_year") or "").strip()
+        amount = int(data.get("amount") or 0)
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
 
@@ -381,13 +398,13 @@ async def handle_shopping_item(request: web.Request) -> web.Response:
     try:
         data = await request.json()
         chat_id = int(data.get("chat_id"))
-        action = str(data.get("action", "")).strip()
+        action = str(data.get("action") or "").strip()
     except Exception:
         return web.json_response({"success": False, "error": "Noto'g'ri ma'lumotlar"}, status=400)
 
     if action == "add":
-        title = str(data.get("title", "")).strip()
-        added_by = str(data.get("added_by", "")).strip()
+        title = str(data.get("title") or "").strip()
+        added_by = str(data.get("added_by") or "").strip()
         if not title:
             return web.json_response({"success": False, "error": "Mahsulot nomi bo'sh bo'lmasligi kerak"}, status=400)
         item_id = await finance_queries.add_shopping_item(chat_id, title, added_by)
